@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/sv-oss/dynalog4j/compare/v1.2.0...v1.3.0) (2025-09-10)
+
+
+### Features
+
+* multi-arch docker image ([#9](https://github.com/sv-oss/dynalog4j/issues/9)) ([3aa0348](https://github.com/sv-oss/dynalog4j/commit/3aa03484f5290d3626b7175841d5ef2630788b26))
+
+
+### Bug Fixes
+
+* use github app token for release-please ([d34406e](https://github.com/sv-oss/dynalog4j/commit/d34406e1e0cac7a651dd512ecd4256eca2770c6f))
+
 ## [1.2.0](https://github.com/sv-oss/dynalog4j/compare/v1.1.0...v1.2.0) (2025-09-10)
 
 
