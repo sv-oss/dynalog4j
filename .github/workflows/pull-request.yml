@@ -8,14 +8,15 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    permissions: {}
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Set up Java and Maven
         uses: s4u/setup-maven-action@v1.18.0
         with:
-          java-version: "21"
           java-distribution: temurin
+          java-version: "21"
       - name: Build and test
         run: mvn clean compile test

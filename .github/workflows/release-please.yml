@@ -34,15 +34,15 @@ jobs:
       - name: Set up Java and Maven
         uses: s4u/setup-maven-action@v1.18.0
         with:
-          java-version: "21"
           java-distribution: temurin
+          java-version: "21"
       - name: Build and package
         run: mvn clean package
       - name: Upload release assets
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ needs.release-please.outputs.tag_name }}
           files: target/DynaLog4J-*.jar
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Authenticate to Google Cloud
@@ -59,10 +59,10 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
+          push: true
+          context: .
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |-
             gcr.io/${{ secrets.GCP_PROJECT_ID }}/dynalog4j:latest
             gcr.io/${{ secrets.GCP_PROJECT_ID }}/dynalog4j:${{ steps.extract-version.outputs.version }}
-          push: true
-          context: .

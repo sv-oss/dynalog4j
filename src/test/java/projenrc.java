@@ -114,7 +114,9 @@ public class projenrc {
         
         workflow.addJob("test", Job.builder()
             .runsOn(List.of("ubuntu-latest"))
-            .permissions(JobPermissions.builder().build())  // Default permissions
+            .permissions(JobPermissions.builder()
+                .contents(io.github.cdklabs.projen.github.workflows.JobPermission.READ)
+                .build())
             .steps(List.of(
                 JobStep.builder()
                     .name("Checkout code")
