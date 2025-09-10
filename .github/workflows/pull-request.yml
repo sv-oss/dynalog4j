@@ -19,3 +19,16 @@ jobs:
           java-distribution: temurin
       - name: Build and test
         run: mvn clean compile test
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          # Enable multi-platform builds
+          platforms: linux/amd64,linux/arm64
+      - name: Test multi-architecture Docker build
+        uses: docker/build-push-action@v5
+        with:
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+          push: false
+          context: .
