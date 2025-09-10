@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/sv-oss/dynalog4j/compare/v2.2.1...v2.3.0) (2025-09-10)
+
+
+### Features
+
+* support using a regex pattern to select a logger context ([877f9fc](https://github.com/sv-oss/dynalog4j/commit/877f9fcf073d77b05cd21a58051490a1afbd962d))
+
 ## [2.2.1](https://github.com/sv-oss/dynalog4j/compare/v2.2.0...v2.2.1) (2025-09-10)
 
 
