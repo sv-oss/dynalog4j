@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/sv-oss/dynalog4j/compare/v2.0.0...v2.1.0) (2025-09-10)
+
+
+### Features
+
+* add floating tags to docker images ([12f613b](https://github.com/sv-oss/dynalog4j/commit/12f613b67996f50b52a16df2c06f54d45e5701be))
+
 ## [2.0.0](https://github.com/sv-oss/dynalog4j/compare/v1.3.0...v2.0.0) (2025-09-10)
 
 
