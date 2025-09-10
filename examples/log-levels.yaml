@@ -1,0 +1,20 @@
+# Example log levels configuration file (YAML format)
+# Mount this file to /config/log-levels.yaml in the container
+
+loggers:
+  # Root logger level
+  root: WARN
+  
+  # Application loggers
+  com.mycompany.myapp: DEBUG
+  com.mycompany.myapp.service: INFO
+  com.mycompany.myapp.dao: WARN
+  
+  # Third-party libraries
+  org.springframework: INFO
+  org.hibernate: WARN
+  org.apache.http: ERROR
+  
+  # Specific classes that need debug logging
+  com.mycompany.myapp.service.PaymentService: DEBUG
+  com.mycompany.myapp.controller.UserController: TRACE

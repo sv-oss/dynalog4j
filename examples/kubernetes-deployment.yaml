@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-with-sidecar
+  labels:
+    app: my-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      # Main application container
+      - name: my-app
+        image: my-app:latest
+        ports:
+        - containerPort: 8080
+        env:
+        # Enable JMX for the main application
+        - name: JAVA_OPTS
+          value: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.local.only=false"
+        volumeMounts:
+        - name: log-config
+          mountPath: /config
+          readOnly: true
+        
+      # dynalog4j sidecar container
+      - name: dynalog4j-sidecar
+        image: dynalog4j:latest
+        env:
+        # Sidecar configuration
+        - name: BACKEND
+          value: "file"
+        - name: RECONCILE_INTERVAL_SECONDS
+          value: "30"
+        - name: JMX_HOST
+          value: "localhost"
+        - name: JMX_PORT
+          value: "9999"
+        - name: LOG_CONFIG_PATH
+          value: "/config/log-levels.yaml"
+        # Optional: specify target logger context
+        # - name: TARGET_LOGGER_CONTEXT
+        #   value: "MyApp"
+        volumeMounts:
+        - name: log-config
+          mountPath: /config
+          readOnly: true
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+            
+      volumes:
+      - name: log-config
+        configMap:
+          name: log-levels-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-levels-config
+data:
+  log-levels.yaml: |
+    loggers:
+      root: WARN
+      com.mycompany.myapp: DEBUG
+      com.mycompany.myapp.service: INFO
+      org.springframework: INFO
+      org.hibernate: WARN

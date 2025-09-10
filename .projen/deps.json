@@ -1,0 +1,234 @@
+{
+  "dependencies": [
+    {
+      "name": "org.apache.maven.plugins/maven-compiler-plugin",
+      "version": "3.8.1",
+      "type": "build",
+      "metadata": {
+        "configuration": {
+          "source": "21",
+          "target": "21"
+        }
+      }
+    },
+    {
+      "name": "org.apache.maven.plugins/maven-enforcer-plugin",
+      "version": "3.0.0-M3",
+      "type": "build",
+      "metadata": {
+        "executions": [
+          {
+            "id": "enforce-maven",
+            "goals": [
+              "enforce"
+            ]
+          }
+        ],
+        "configuration": {
+          "rules": [
+            {
+              "requireMavenVersion": [
+                {
+                  "version": "3.6"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "org.apache.maven.plugins/maven-jar-plugin",
+      "version": "3.2.0",
+      "type": "build",
+      "metadata": {
+        "configuration": {
+          "archive": {
+            "index": true,
+            "manifest": {
+              "addDefaultImplementationEntries": true,
+              "addDefaultSpecificationEntries": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "org.apache.maven.plugins/maven-javadoc-plugin",
+      "version": "3.2.0",
+      "type": "build",
+      "metadata": {
+        "executions": [
+          {
+            "id": "attach-javadocs",
+            "goals": [
+              "jar"
+            ]
+          }
+        ],
+        "configuration": {
+          "failOnError": false,
+          "show": "protected",
+          "detectJavaApiLink": false,
+          "additionalJOptions": {
+            "additionalJOption": [
+              "-J-XX:+TieredCompilation",
+              "-J-XX:TieredStopAtLevel=1"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "org.apache.maven.plugins/maven-shade-plugin",
+      "version": "3.5.0",
+      "type": "build",
+      "metadata": {
+        "executions": [
+          {
+            "goals": [
+              "shade"
+            ],
+            "id": "shade-jar",
+            "configuration": {
+              "createDependencyReducedPom": false,
+              "transformers": {
+                "transformer": {
+                  "mainClass": "au.gov.vic.dgs.digitalplatforms.dynalog4j.App",
+                  "@implementation": "org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"
+                }
+              }
+            },
+            "phase": "package"
+          }
+        ]
+      }
+    },
+    {
+      "name": "org.apache.maven.plugins/maven-source-plugin",
+      "version": "3.2.1",
+      "type": "build",
+      "metadata": {
+        "executions": [
+          {
+            "id": "attach-sources",
+            "goals": [
+              "jar"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "org.apache.maven.plugins/maven-surefire-plugin",
+      "version": "3.2.5",
+      "type": "build"
+    },
+    {
+      "name": "org.codehaus.mojo/exec-maven-plugin",
+      "version": "3.0.0",
+      "type": "build"
+    },
+    {
+      "name": "com.fasterxml.jackson.core/jackson-core",
+      "version": "2.16.1",
+      "type": "runtime"
+    },
+    {
+      "name": "com.fasterxml.jackson.core/jackson-databind",
+      "version": "2.16.1",
+      "type": "runtime"
+    },
+    {
+      "name": "com.fasterxml.jackson.dataformat/jackson-dataformat-yaml",
+      "version": "2.16.1",
+      "type": "runtime"
+    },
+    {
+      "name": "info.picocli/picocli",
+      "version": "4.7.6",
+      "type": "runtime"
+    },
+    {
+      "name": "org.apache.logging.log4j/log4j-core",
+      "version": "2.22.1",
+      "type": "runtime"
+    },
+    {
+      "name": "org.apache.logging.log4j/log4j-slf4j2-impl",
+      "version": "2.22.1",
+      "type": "runtime"
+    },
+    {
+      "name": "org.slf4j/slf4j-api",
+      "version": "2.0.12",
+      "type": "runtime"
+    },
+    {
+      "name": "software.amazon.awssdk/dynamodb",
+      "version": "2.25.11",
+      "type": "runtime"
+    },
+    {
+      "name": "software.amazon.awssdk/sso",
+      "version": "2.25.11",
+      "type": "runtime"
+    },
+    {
+      "name": "software.amazon.awssdk/ssooidc",
+      "version": "2.25.11",
+      "type": "runtime"
+    },
+    {
+      "name": "io.github.cdklabs/projen",
+      "version": "0.95.6",
+      "type": "test"
+    },
+    {
+      "name": "org.assertj/assertj-core",
+      "version": "3.25.3",
+      "type": "test"
+    },
+    {
+      "name": "org.awaitility/awaitility",
+      "version": "4.2.1",
+      "type": "test"
+    },
+    {
+      "name": "org.junit.jupiter/junit-jupiter-api",
+      "version": "5.7.0",
+      "type": "test"
+    },
+    {
+      "name": "org.junit.jupiter/junit-jupiter-engine",
+      "version": "5.7.0",
+      "type": "test"
+    },
+    {
+      "name": "org.mockito/mockito-core",
+      "version": "5.11.0",
+      "type": "test"
+    },
+    {
+      "name": "org.mockito/mockito-junit-jupiter",
+      "version": "5.11.0",
+      "type": "test"
+    },
+    {
+      "name": "org.testcontainers/junit-jupiter",
+      "version": "1.19.7",
+      "type": "test"
+    },
+    {
+      "name": "org.testcontainers/localstack",
+      "version": "1.19.7",
+      "type": "test"
+    },
+    {
+      "name": "uk.org.webcompere/system-stubs-jupiter",
+      "version": "2.1.6",
+      "type": "test"
+    }
+  ],
+  "//": "~~ Generated by projen. To modify, edit src/test/java/projenrc.java and run \"npx projen\"."
+}
