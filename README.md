@@ -11,6 +11,8 @@ DynaLog4J is a Java application designed to dynamically manage log levels of a c
 - **Zero-downtime log level changes**: Update log levels without restarting your application
 - **JMX-based**: Uses standard JMX APIs to communicate with Log4j2
 - **Auto-discovery**: Automatically discovers Log4j2 LoggerContexts in the target JVM
+- **Process attachment**: Attach to Java processes by PID with automatic JMX agent initialization
+- **Smart process discovery**: Auto-detect target applications or filter by command patterns
 - **Pluggable backends**: Support for environment variables, files, and DynamoDB
 - **CLI-friendly**: Comprehensive command-line interface with help and configuration options
 - **Container-ready**: Packaged as a slim Docker container for easy deployment
@@ -39,6 +41,8 @@ All options can be provided via CLI arguments or environment variables. CLI argu
 | `--config-path` | | `LOG_CONFIG_PATH` | `/config/log-levels.yaml` | File path for file backend |
 | `--jmx-host` | | `JMX_HOST` | `localhost` | JMX host |
 | `--jmx-port` | | `JMX_PORT` | `9999` | JMX port |
+| `--jmx-pid` | | `JMX_PID` | (auto-discover) | Process ID to attach to (alternative to host/port) |
+| `--jmx-pid-filter` | | `JMX_PID_FILTER` | (none) | Process command pattern to filter discoverable PIDs |
 | `--target-context` | | `TARGET_LOGGER_CONTEXT` | auto-select | Target LoggerContext name |
 | `--interval` | `-i` | `RECONCILE_INTERVAL_SECONDS` | `30` | Reconciliation interval in seconds |
 | `--dry-run` | | `DRY_RUN` | `false` | Run in dry-run mode (no actual changes) |
@@ -74,7 +78,32 @@ java -jar DynaLog4J-1.0.0.jar \
   --verbose
 ```
 
+#### Process ID (PID) attachment
+```bash
+# Attach to a specific Java process by PID
+java -jar DynaLog4J-1.0.0.jar --jmx-pid 12345
+
+# Auto-discover and attach to a Java process (single process)
+java -jar DynaLog4J-1.0.0.jar
+
+# Auto-discover with process filter (regex or substring matching)
+java -jar DynaLog4J-1.0.0.jar --jmx-pid-filter "my-application"
+java -jar DynaLog4J-1.0.0.jar --jmx-pid-filter ".*spring-boot.*"
+```
+
 ## Core Architecture
+
+### JMX Connection Methods
+
+DynaLog4J supports multiple methods to connect to your target Java application:
+
+1. **Process ID (PID) Attachment** (Recommended): Automatically discovers and attaches to Java processes
+   - Auto-discovery: Scans for attachable Java processes if no PID specified
+   - Direct PID: Connect to a specific process using `--jmx-pid`
+   - Filtered discovery: Use `--jmx-pid-filter` to match specific applications
+   - Automatic JMX agent initialization if not already enabled
+
+2. **Traditional JMX URL**: Connect via host/port (requires pre-configured JMX endpoint)
 
 ### Reconciliation Loop
 
@@ -123,20 +152,15 @@ This creates a shaded JAR: `target/DynaLog4J-1.0.0.jar`
 docker build -t dynalog4j:latest .
 ```
 
-### 3. Configure Your Main Application
+### 3. Configure Your Main Application (Optional for PID mode)
 
-Enable JMX in your main Java application:
+For PID attachment mode, JMX configuration is handled automatically. For traditional JMX connections, enable JMX in your main Java application:
 
 ```bash
-java -Dcom.sun.management.jmxremote \
-     -Dcom.sun.management.jmxremote.port=9999 \
-     -Dcom.sun.management.jmxremote.authenticate=false \
-     -Dcom.sun.management.jmxremote.ssl=false \
-     -Dcom.sun.management.jmxremote.local.only=false \
-     -jar your-app.jar
+java -Dlog4j2.disableJmx=false -jar your-app.jar
 ```
 
-**Note**: Your target application must also be running on Java 21 for optimal compatibility.
+**Note**: When using PID attachment (`--jmx-pid` or auto-discovery), DynaLog4J can automatically start the JMX management agent if it's not already running, making explicit JMX configuration optional.
 
 ### 4. Run DynaLog4J
 
@@ -145,6 +169,12 @@ java -Dcom.sun.management.jmxremote \
 ```bash
 # Via CLI arguments (requires Java 21)
 java -jar DynaLog4J-1.0.0.jar --backend env
+
+# Using PID attachment (auto-discover Java processes)
+java -jar DynaLog4J-1.0.0.jar --backend env
+
+# Using specific PID
+java -jar DynaLog4J-1.0.0.jar --backend env --jmx-pid 12345
 
 # Or via Docker with environment variables
 docker run -d \
@@ -196,14 +226,24 @@ docker run -d \
 
 ## Configuration
 
+### Connection Methods
+
+DynaLog4J offers flexible connection options:
+
+1. **Auto-discovery**: Automatically finds and attaches to Java processes
+2. **PID-based**: Attach to specific process IDs  
+3. **Traditional JMX**: Connect via host/port endpoints
+
 ### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BACKEND` | `env` | Backend type: `env`, `file`, or `dynamodb` |
 | `RECONCILE_INTERVAL_SECONDS` | `30` | How often to check for config changes |
-| `JMX_HOST` | `localhost` | JMX endpoint hostname |
-| `JMX_PORT` | `9999` | JMX endpoint port |
+| `JMX_HOST` | `localhost` | JMX endpoint hostname (for traditional JMX) |
+| `JMX_PORT` | `9999` | JMX endpoint port (for traditional JMX) |
+| `JMX_PID` | (auto-discover) | Process ID to attach to |
+| `JMX_PID_FILTER` | (none) | Filter pattern for process auto-discovery |
 | `TARGET_LOGGER_CONTEXT` | (auto-detect) | Specific LoggerContext name to target |
 
 #### Environment Variables Backend
@@ -250,12 +290,65 @@ Expected DynamoDB item structure:
 }
 ```
 
+## PID Attachment Features
+
+DynaLog4J includes powerful process attachment capabilities that eliminate the need for pre-configured JMX endpoints:
+
+### Auto-Discovery
+
+When no specific PID or JMX URL is provided, DynaLog4J automatically discovers attachable Java processes:
+
+```bash
+# Automatically finds and attaches to the single Java process
+java -jar DynaLog4J-1.0.0.jar --backend env
+```
+
+If multiple Java processes are found, DynaLog4J lists them for manual selection:
+```
+Multiple attachable Java processes found. Please specify --jmx-pid:
+  - PID: 12345
+  - PID: 67890
+```
+
+### Filtered Discovery
+
+Use `--jmx-pid-filter` to automatically select processes matching a pattern:
+
+```bash
+# Match by application name (substring matching)
+java -jar DynaLog4J-1.0.0.jar --jmx-pid-filter "spring-boot"
+
+# Match by regex pattern
+java -jar DynaLog4J-1.0.0.jar --jmx-pid-filter ".*myapp.*"
+
+# Match by JAR name
+java -jar DynaLog4J-1.0.0.jar --jmx-pid-filter "my-application.jar"
+```
+
+### Direct PID Attachment
+
+Connect to a specific process by PID:
+
+```bash
+java -jar DynaLog4J-1.0.0.jar --jmx-pid 12345
+```
+
+### Automatic JMX Agent Initialization
+
+When attaching via PID, DynaLog4J automatically:
+- Detects if the JMX management agent is running
+- Starts the local management agent if needed
+- Obtains the JMX connector address
+- Establishes the connection
+
+This means your target application doesn't need any special JMX configuration.
+
 ## Kubernetes Deployment
 
 See `examples/kubernetes-deployment.yaml` for a complete example. Key points:
 
 1. **Same pod**: Sidecar and main app must be in the same pod to share localhost
-2. **JMX configuration**: Enable JMX in your main application
+2. **JMX configuration**: When using PID attachment, JMX configuration is optional as DynaLog4J can auto-initialize the JMX agent
 3. **ConfigMap**: Use ConfigMap to provide log level configuration
 4. **Resource limits**: Sidecar is lightweight, typically needs 128-256MB RAM
 
@@ -263,10 +356,8 @@ See `examples/kubernetes-deployment.yaml` for a complete example. Key points:
 containers:
 - name: my-app
   image: my-app:latest
-  env:
-  - name: JAVA_OPTS
-    value: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9999 ..."
-
+  # JMX configuration optional when using PID attachment
+  
 - name: dynalog4j-sidecar
   image: dynalog4j:latest
   env:
@@ -274,6 +365,7 @@ containers:
     value: "file"
   - name: LOG_CONFIG_PATH
     value: "/config/log-levels.yaml"
+  # PID auto-discovery will find the main app automatically
 ```
 
 ## Development
@@ -290,16 +382,6 @@ mvn clean compile
 mvn test
 ```
 
-### Running Locally
-
-```bash
-# Start your main application with JMX enabled
-java -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9999 ... -jar your-app.jar
-
-# In another terminal, run the sidecar
-mvn exec:java -Dexec.mainClass="org.acme.sidecar.LogSidecar"
-```
-
 ## Supported Log Levels
 
 - `TRACE`
@@ -310,51 +392,6 @@ mvn exec:java -Dexec.mainClass="org.acme.sidecar.LogSidecar"
 - `FATAL`
 - `OFF`
 
-## Security Considerations
-
-- **JMX Security**: This example disables JMX authentication for simplicity. In production, configure proper JMX security
-- **Network isolation**: Sidecar only needs localhost access to the main application
-- **Least privilege**: Container runs as non-root user
-- **Backend access**: Secure your configuration backend (file permissions, AWS IAM, etc.)
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"No LoggerContexts found"**: Ensure your main app uses Log4j2 and has JMX enabled
-2. **"Connection refused"**: Check JMX port and ensure both containers can reach localhost
-3. **"Configuration unchanged"**: Verify your backend is returning the expected log levels
-
-**Docker Compose specific issues:**
-
-4. **"Connection refused to host: xxx.xxx.xxx.xxx"**: When running main app in Docker and sidecar on host:
-   ```yaml
-   # In your docker-compose.yml, add these JVM args to your main app:
-   environment:
-     - JAVA_OPTS=-Dcom.sun.management.jmxremote.local.only=false -Djava.rmi.server.hostname=localhost -Djava.net.preferIPv4Stack=true -Dcom.sun.management.jmxremote.rmi.port=9999 -Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false
-   ports:
-     - "9999:9999"
-   ```
-
-5. **IPv6 vs IPv4**: If JMX shows `:::9999` in netstat, add `-Djava.net.preferIPv4Stack=true` to force IPv4
-
-### Logging
-
-The sidecar logs its actions at INFO level. To see more details:
-
-```bash
-# Add debug logging
--e LOG_LEVEL_org.acme.sidecar=DEBUG
-```
-
-### Health Check
-
-The Docker image includes a health check that verifies the Java process is running:
-
-```bash
-docker exec <container-id> pgrep -f "java.*dynalog4j"
-```
-
 ## License
 
-This project is licensed under the Apache License 2.0.
+This project is licensed under the MIT License
