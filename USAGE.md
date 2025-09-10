@@ -37,3 +37,35 @@ export DYNAMO_TABLE_NAME=log-levels
 export SERVICE_NAME=my-app
 java -jar target/DynaLog4J-1.0.0.jar
 ```
+
+## Retry Configuration
+
+DynaLog4J supports automatic retry on main loop failures for improved resilience:
+
+### With Retry (Recommended for Production)
+```bash
+# Retry up to 5 times with 2-minute intervals
+export MAX_ATTEMPTS=5
+export RETRY_INTERVAL_SECONDS=120
+java -jar target/DynaLog4J-1.0.0.jar --backend env
+
+# Or via CLI arguments
+java -jar target/DynaLog4J-1.0.0.jar \
+  --backend dynamo \
+  --table-name log-levels \
+  --service-name my-app \
+  --max-attempts 3 \
+  --retry-interval 60
+```
+
+### Without Retry (Default)
+```bash
+# Fail immediately on errors (default behavior)
+java -jar target/DynaLog4J-1.0.0.jar --backend env
+```
+
+**Use Cases for Retry:**
+- Production environments where resilience is critical
+- Network-dependent backends (DynamoDB, remote files)
+- Deployments where target applications may restart
+- Container environments with potential temporary failures

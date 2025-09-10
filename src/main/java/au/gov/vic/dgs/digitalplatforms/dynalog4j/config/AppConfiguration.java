@@ -67,6 +67,15 @@ public class AppConfiguration {
             description = "Enable verbose logging")
     private boolean verbose = Boolean.parseBoolean(getEnvOrDefault("VERBOSE", "false"));
 
+    // Retry Configuration
+    @Option(names = {"--max-attempts"}, 
+            description = "Maximum number of retry attempts for main loop failures (0 = no retry, default: ${DEFAULT-VALUE})")
+    private Integer maxAttempts = parseInt(getEnvOrDefault("MAX_ATTEMPTS", "0"));
+
+    @Option(names = {"--retry-interval"}, 
+            description = "Retry interval in seconds between main loop restart attempts (default: ${DEFAULT-VALUE})")
+    private Long retryIntervalSeconds = parseLong(getEnvOrDefault("RETRY_INTERVAL_SECONDS", "60"));
+
     // Help flag is handled by picocli mixinStandardHelpOptions
 
     /**
@@ -155,6 +164,17 @@ public class AppConfiguration {
         return verbose;
     }
 
+    public int getMaxAttempts() {
+        return maxAttempts != null && maxAttempts >= 0 ? maxAttempts : 0;
+    }
+
+    public Duration getRetryInterval() {
+        if (retryIntervalSeconds == null || retryIntervalSeconds < 1) {
+            return Duration.ofSeconds(60);
+        }
+        return Duration.ofSeconds(retryIntervalSeconds);
+    }
+
     // Setters for testing
     public void setBackend(String backend) {
         this.backend = backend;
@@ -204,6 +224,14 @@ public class AppConfiguration {
         this.verbose = verbose;
     }
 
+    public void setMaxAttempts(Integer maxAttempts) {
+        this.maxAttempts = maxAttempts;
+    }
+
+    public void setRetryIntervalSeconds(Long retryIntervalSeconds) {
+        this.retryIntervalSeconds = retryIntervalSeconds;
+    }
+
     // Utility methods
     private static String getEnvOrDefault(String envVar, String defaultValue) {
         String value = System.getenv(envVar);
@@ -213,6 +241,14 @@ public class AppConfiguration {
     private static Long parseLong(String value) {
         try {
             return Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static Integer parseInt(String value) {
+        try {
+            return Integer.parseInt(value);
         } catch (NumberFormatException e) {
             return null;
         }
@@ -231,6 +267,8 @@ public class AppConfiguration {
                 ", reconcileIntervalSeconds=" + reconcileIntervalSeconds +
                 ", dryRun=" + dryRun +
                 ", verbose=" + verbose +
+                ", maxAttempts=" + maxAttempts +
+                ", retryIntervalSeconds=" + retryIntervalSeconds +
                 '}';
     }
 }

@@ -46,6 +46,8 @@ All options can be provided via CLI arguments or environment variables. CLI argu
 | `--interval` | `-i` | `RECONCILE_INTERVAL_SECONDS` | `30` | Reconciliation interval in seconds |
 | `--dry-run` | | `DRY_RUN` | `false` | Run in dry-run mode (no actual changes) |
 | `--verbose` | `-v` | `VERBOSE` | `false` | Enable verbose logging |
+| `--max-attempts` | | `MAX_ATTEMPTS` | `0` | Maximum retry attempts for main loop failures (0 = no retry) |
+| `--retry-interval` | | `RETRY_INTERVAL_SECONDS` | `60` | Retry interval in seconds between restart attempts |
 
 ### Examples
 
@@ -90,6 +92,24 @@ java -jar DynaLog4J-1.0.0.jar --jmx-pid-filter "my-application"
 java -jar DynaLog4J-1.0.0.jar --jmx-pid-filter ".*spring-boot.*"
 ```
 
+#### Retry configuration
+```bash
+# Enable retry with maximum 3 attempts and 30-second intervals
+java -jar DynaLog4J-1.0.0.jar \
+  --backend env \
+  --max-attempts 3 \
+  --retry-interval 30
+
+# Production-ready configuration with retry for resilience
+java -jar DynaLog4J-1.0.0.jar \
+  --backend dynamo \
+  --table-name my-log-table \
+  --service-name my-service \
+  --max-attempts 5 \
+  --retry-interval 120 \
+  --verbose
+```
+
 ## Core Architecture
 
 ### JMX Connection Methods
@@ -112,6 +132,27 @@ DynaLog4J supports multiple methods to connect to your target Java application:
 4. **Reconcile**: Merge desired log level overrides from backend
 5. **Write updated config**: Push updated XML back via JMX (unless in dry-run mode)
 6. **Repeat**: Continuously sync at configured interval
+
+### Retry and Resilience
+
+DynaLog4J includes built-in retry functionality to handle transient failures and improve reliability:
+
+- **Configurable retry attempts**: Set `--max-attempts` to define how many times the main loop should restart on failure
+- **Customizable retry intervals**: Use `--retry-interval` to control the delay between restart attempts  
+- **Graceful failure handling**: Logs detailed error information and retry attempts
+- **No retry by default**: Set `--max-attempts 0` (default) to disable retry behavior for fail-fast scenarios
+
+**Example scenarios:**
+- **Network issues**: Temporary loss of JMX connectivity
+- **Target application restarts**: Main application briefly unavailable during deployment
+- **Backend failures**: Temporary issues with DynamoDB, file system, or other backends
+
+When retry is enabled, DynaLog4J will:
+1. Log the failure and current attempt number
+2. Wait for the configured retry interval
+3. Reset internal state and restart the main loop
+4. Continue until max attempts reached or success
+5. Exit with error code if all attempts exhausted
 
 ### Backend Plugin Model
 
@@ -182,6 +223,8 @@ docker run -d \
   -e LOG_LEVEL_root=WARN \
   -e LOG_LEVEL_com.example=DEBUG \
   -e JMX_PORT=9999 \
+  -e MAX_ATTEMPTS=3 \
+  -e RETRY_INTERVAL_SECONDS=60 \
   dynalog4j:latest
 ```
 
@@ -244,6 +287,8 @@ DynaLog4J offers flexible connection options:
 | `JMX_PID` | (auto-discover) | Process ID to attach to |
 | `JMX_PID_FILTER` | (none) | Filter pattern for process auto-discovery |
 | `TARGET_LOGGER_CONTEXT` | (auto-detect) | Specific LoggerContext name to target |
+| `MAX_ATTEMPTS` | `0` | Maximum retry attempts for main loop failures (0 = no retry) |
+| `RETRY_INTERVAL_SECONDS` | `60` | Retry interval in seconds between restart attempts |
 
 #### Environment Variables Backend
 

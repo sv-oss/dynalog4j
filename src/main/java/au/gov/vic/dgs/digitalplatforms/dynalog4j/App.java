@@ -56,11 +56,16 @@ public class App {
             app.stop();
         }));
         
-        try {
-            app.start();
-        } catch (Exception e) {
-            logger.error("Application failed to start: {}", e.getMessage(), e);
-            System.exit(1);
+        // Run with retry logic if configured
+        if (config.getMaxAttempts() > 0) {
+            app.runWithRetry();
+        } else {
+            try {
+                app.start();
+            } catch (Exception e) {
+                logger.error("Application failed to start: {}", e.getMessage(), e);
+                System.exit(1);
+            }
         }
     }
 
@@ -111,6 +116,53 @@ public class App {
 
         cleanup();
         logger.info("Application stopped");
+    }
+
+    /**
+     * Run the application with retry logic for main loop failures.
+     */
+    public void runWithRetry() {
+        int attempt = 0;
+        int maxAttempts = config.getMaxAttempts();
+        
+        while (attempt < maxAttempts && !Thread.currentThread().isInterrupted()) {
+            attempt++;
+            
+            try {
+                logger.info("Starting application (attempt {} of {})", attempt, maxAttempts);
+                start();
+                
+                // If we reach here, the application ran successfully and stopped normally
+                logger.info("Application completed successfully");
+                return;
+                
+            } catch (Exception e) {
+                logger.error("Application failed on attempt {} of {}: {}", attempt, maxAttempts, e.getMessage(), e);
+                
+                // If this was the last attempt, exit with error
+                if (attempt >= maxAttempts) {
+                    logger.error("Maximum retry attempts ({}) exceeded. Exiting.", maxAttempts);
+                    System.exit(1);
+                    return;
+                }
+                
+                // Reset the running flag for next attempt
+                running.set(false);
+                
+                // Wait before retrying
+                long retryDelayMs = config.getRetryInterval().toMillis();
+                logger.info("Waiting {} seconds before retry attempt {}...", 
+                           config.getRetryInterval().getSeconds(), attempt + 1);
+                
+                try {
+                    Thread.sleep(retryDelayMs);
+                } catch (InterruptedException ie) {
+                    logger.info("Retry delay interrupted");
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }
     }
 
     /**
