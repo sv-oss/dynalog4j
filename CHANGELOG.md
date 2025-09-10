@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/sv-oss/dynalog4j/compare/v1.3.0...v2.0.0) (2025-09-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* support new dynamodb table structure with composite primary keys
+
+### Features
+
+* support new dynamodb table structure with composite primary keys ([82e6552](https://github.com/sv-oss/dynalog4j/commit/82e655205a7feb290777f959ab8cc39fc9cad182))
+
 ## [1.3.0](https://github.com/sv-oss/dynalog4j/compare/v1.2.0...v1.3.0) (2025-09-10)
 
 
