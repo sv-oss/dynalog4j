@@ -5,8 +5,8 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,17 +14,21 @@ import java.util.Map;
 /**
  * Backend that reads log level overrides from a DynamoDB table.
  * Expected table structure:
- * - Primary key: service (String) - the service/application name
- * - Attribute: loggers (Map) - map of logger names to levels
+ * - Composite primary key: service (String) as partition key, logger (String) as sort key
+ * - Attribute: level (String) - the log level for this logger
+ * - Optional attribute: ttl (Number) - Unix timestamp for TTL expiration
  * 
- * Example item:
+ * Example items:
  * {
  *   "service": "my-app",
- *   "loggers": {
- *     "com.example.Class1": "DEBUG",
- *     "com.example.Class2": "INFO",
- *     "root": "WARN"
- *   }
+ *   "logger": "com.example.Class1", 
+ *   "level": "DEBUG",
+ *   "ttl": 1672531200
+ * }
+ * {
+ *   "service": "my-app",
+ *   "logger": "root",
+ *   "level": "WARN"
  * }
  */
 public class DynamoDBBackend implements Backend {
@@ -60,36 +64,35 @@ public class DynamoDBBackend implements Backend {
     @Override
     public Map<String, String> fetchDesiredLevels() throws Exception {
         try {
-            Map<String, AttributeValue> key = Map.of(
-                "service", AttributeValue.builder().s(serviceName).build()
-            );
-
-            GetItemRequest request = GetItemRequest.builder()
+            QueryRequest request = QueryRequest.builder()
                     .tableName(tableName)
-                    .key(key)
+                    .keyConditionExpression("service = :service")
+                    .expressionAttributeValues(Map.of(
+                        ":service", AttributeValue.builder().s(serviceName).build()
+                    ))
                     .build();
 
-            GetItemResponse response = dynamoDbClient.getItem(request);
+            QueryResponse response = dynamoDbClient.query(request);
             
-            if (!response.hasItem()) {
+            if (!response.hasItems() || response.items().isEmpty()) {
                 logger.info("No configuration found in DynamoDB for service: {}", serviceName);
                 return new HashMap<>();
             }
 
-            Map<String, AttributeValue> item = response.item();
-            AttributeValue loggersAttribute = item.get("loggers");
-            
-            if (loggersAttribute == null || !loggersAttribute.hasM()) {
-                logger.warn("No 'loggers' map found in DynamoDB item for service: {}", serviceName);
-                return new HashMap<>();
-            }
-
             Map<String, String> desiredLevels = new HashMap<>();
-            Map<String, AttributeValue> loggersMap = loggersAttribute.m();
             
-            for (Map.Entry<String, AttributeValue> entry : loggersMap.entrySet()) {
-                String loggerName = entry.getKey();
-                String level = entry.getValue().s();
+            for (Map<String, AttributeValue> item : response.items()) {
+                AttributeValue loggerAttribute = item.get("logger");
+                AttributeValue levelAttribute = item.get("level");
+                
+                if (loggerAttribute == null || loggerAttribute.s() == null || 
+                    levelAttribute == null || levelAttribute.s() == null) {
+                    logger.warn("Invalid item structure in DynamoDB - missing logger or level attribute");
+                    continue;
+                }
+                
+                String loggerName = loggerAttribute.s();
+                String level = levelAttribute.s();
                 
                 if (isValidLogLevel(level)) {
                     desiredLevels.put(loggerName, level.toUpperCase());
@@ -104,8 +107,8 @@ public class DynamoDBBackend implements Backend {
             return desiredLevels;
             
         } catch (Exception e) {
-            logger.error("Error reading from DynamoDB table {}: {}", tableName, e.getMessage());
-            throw new Exception("Failed to read from DynamoDB: " + e.getMessage(), e);
+            logger.error("Error querying DynamoDB table {}: {}", tableName, e.getMessage());
+            throw new Exception("Failed to query DynamoDB: " + e.getMessage(), e);
         }
     }
     

@@ -3,11 +3,12 @@ package au.gov.vic.dgs.digitalplatforms.dynalog4j.backend;
 import org.junit.jupiter.api.Test;
 import au.gov.vic.dgs.digitalplatforms.dynalog4j.config.AppConfiguration;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 
 import java.util.Map;
-import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -84,19 +85,25 @@ class BackendFactoryIntegrationTest {
         // Arrange - Create a mock DynamoDB client wrapper
         DynamoDbClientWrapper mockClient = mock(DynamoDbClientWrapper.class);
         
-        // Mock response with sample log levels
-        Map<String, AttributeValue> mockLoggers = new HashMap<>();
-        mockLoggers.put("root", AttributeValue.builder().s("INFO").build());
-        mockLoggers.put("com.example.TestClass", AttributeValue.builder().s("DEBUG").build());
+        // Mock response with sample log levels using new table structure
+        List<Map<String, AttributeValue>> items = List.of(
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("root").build(),
+                "level", AttributeValue.builder().s("INFO").build()
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("com.example.TestClass").build(),
+                "level", AttributeValue.builder().s("DEBUG").build()
+            )
+        );
         
-        Map<String, AttributeValue> mockItem = new HashMap<>();
-        mockItem.put("loggers", AttributeValue.builder().m(mockLoggers).build());
-        
-        GetItemResponse mockResponse = GetItemResponse.builder()
-            .item(mockItem)
+        QueryResponse mockResponse = QueryResponse.builder()
+            .items(items)
             .build();
         
-        when(mockClient.getItem(any(GetItemRequest.class))).thenReturn(mockResponse);
+        when(mockClient.query(any(QueryRequest.class))).thenReturn(mockResponse);
         
         // Act - Create DynamoDB backend with mocked client
         DynamoDBBackend backend = new DynamoDBBackend("test-table", "test-service", mockClient);
@@ -106,7 +113,7 @@ class BackendFactoryIntegrationTest {
         assertThat(result).isNotEmpty();
         assertThat(result).containsEntry("root", "INFO");
         assertThat(result).containsEntry("com.example.TestClass", "DEBUG");
-        verify(mockClient, times(1)).getItem(any(GetItemRequest.class));
+        verify(mockClient, times(1)).query(any(QueryRequest.class));
     }
 
     @Test
@@ -114,10 +121,11 @@ class BackendFactoryIntegrationTest {
         // Arrange - Create a mock DynamoDB client wrapper that returns empty response
         DynamoDbClientWrapper mockClient = mock(DynamoDbClientWrapper.class);
         
-        GetItemResponse emptyResponse = GetItemResponse.builder()
-            .build(); // No item
+        QueryResponse emptyResponse = QueryResponse.builder()
+            .items(new ArrayList<>())
+            .build();
         
-        when(mockClient.getItem(any(GetItemRequest.class))).thenReturn(emptyResponse);
+        when(mockClient.query(any(QueryRequest.class))).thenReturn(emptyResponse);
         
         // Act - Create DynamoDB backend with mocked client
         DynamoDBBackend backend = new DynamoDBBackend("test-table", "test-service", mockClient);
@@ -125,6 +133,6 @@ class BackendFactoryIntegrationTest {
         
         // Assert
         assertThat(result).isEmpty();
-        verify(mockClient, times(1)).getItem(any(GetItemRequest.class));
+        verify(mockClient, times(1)).query(any(QueryRequest.class));
     }
 }

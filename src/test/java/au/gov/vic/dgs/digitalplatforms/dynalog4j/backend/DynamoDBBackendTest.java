@@ -7,10 +7,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.*;
@@ -33,22 +34,29 @@ class DynamoDBBackendTest {
     @Test
     void testFetchDesiredLevelsWithValidData() throws Exception {
         // Arrange
-        Map<String, AttributeValue> loggersMap = Map.of(
-            "com.example.Service", AttributeValue.builder().s("DEBUG").build(),
-            "org.springframework", AttributeValue.builder().s("WARN").build(),
-            "root", AttributeValue.builder().s("INFO").build()
+        List<Map<String, AttributeValue>> items = List.of(
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("com.example.Service").build(),
+                "level", AttributeValue.builder().s("DEBUG").build()
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("org.springframework").build(),
+                "level", AttributeValue.builder().s("WARN").build()
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("root").build(),
+                "level", AttributeValue.builder().s("INFO").build()
+            )
         );
 
-        Map<String, AttributeValue> item = Map.of(
-            "service", AttributeValue.builder().s("test-service").build(),
-            "loggers", AttributeValue.builder().m(loggersMap).build()
-        );
-
-        GetItemResponse response = GetItemResponse.builder()
-            .item(item)
+        QueryResponse response = QueryResponse.builder()
+            .items(items)
             .build();
 
-        when(mockDynamoDbClient.getItem(any(GetItemRequest.class))).thenReturn(response);
+        when(mockDynamoDbClient.query(any(QueryRequest.class))).thenReturn(response);
 
         // Act
         Map<String, String> result = backend.fetchDesiredLevels();
@@ -59,64 +67,51 @@ class DynamoDBBackendTest {
         assertThat(result).containsEntry("org.springframework", "WARN");
         assertThat(result).containsEntry("root", "INFO");
 
-        verify(mockDynamoDbClient).getItem(any(GetItemRequest.class));
+        verify(mockDynamoDbClient).query(any(QueryRequest.class));
     }
 
     @Test
-    void testFetchDesiredLevelsWithNoItem() throws Exception {
+    void testFetchDesiredLevelsWithNoItems() throws Exception {
         // Arrange
-        GetItemResponse response = GetItemResponse.builder().build();
-        when(mockDynamoDbClient.getItem(any(GetItemRequest.class))).thenReturn(response);
-
-        // Act
-        Map<String, String> result = backend.fetchDesiredLevels();
-
-        // Assert
-        assertThat(result).isEmpty();
-        verify(mockDynamoDbClient).getItem(any(GetItemRequest.class));
-    }
-
-    @Test
-    void testFetchDesiredLevelsWithNoLoggersAttribute() throws Exception {
-        // Arrange
-        Map<String, AttributeValue> item = Map.of(
-            "service", AttributeValue.builder().s("test-service").build()
-        );
-
-        GetItemResponse response = GetItemResponse.builder()
-            .item(item)
+        QueryResponse response = QueryResponse.builder()
+            .items(new ArrayList<>())
             .build();
-
-        when(mockDynamoDbClient.getItem(any(GetItemRequest.class))).thenReturn(response);
+        when(mockDynamoDbClient.query(any(QueryRequest.class))).thenReturn(response);
 
         // Act
         Map<String, String> result = backend.fetchDesiredLevels();
 
         // Assert
         assertThat(result).isEmpty();
-        verify(mockDynamoDbClient).getItem(any(GetItemRequest.class));
+        verify(mockDynamoDbClient).query(any(QueryRequest.class));
     }
 
     @Test
     void testFetchDesiredLevelsWithInvalidLogLevels() throws Exception {
         // Arrange
-        Map<String, AttributeValue> loggersMap = Map.of(
-            "com.example.Valid", AttributeValue.builder().s("DEBUG").build(),
-            "com.example.Invalid", AttributeValue.builder().s("INVALID_LEVEL").build(),
-            "com.example.Empty", AttributeValue.builder().s("").build(),
-            "com.example.Null", AttributeValue.builder().s((String) null).build()
+        List<Map<String, AttributeValue>> items = List.of(
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("com.example.Valid").build(),
+                "level", AttributeValue.builder().s("DEBUG").build()
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("com.example.Invalid").build(),
+                "level", AttributeValue.builder().s("INVALID_LEVEL").build()
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("com.example.Empty").build(),
+                "level", AttributeValue.builder().s("").build()
+            )
         );
 
-        Map<String, AttributeValue> item = Map.of(
-            "service", AttributeValue.builder().s("test-service").build(),
-            "loggers", AttributeValue.builder().m(loggersMap).build()
-        );
-
-        GetItemResponse response = GetItemResponse.builder()
-            .item(item)
+        QueryResponse response = QueryResponse.builder()
+            .items(items)
             .build();
 
-        when(mockDynamoDbClient.getItem(any(GetItemRequest.class))).thenReturn(response);
+        when(mockDynamoDbClient.query(any(QueryRequest.class))).thenReturn(response);
 
         // Act
         Map<String, String> result = backend.fetchDesiredLevels();
@@ -126,30 +121,36 @@ class DynamoDBBackendTest {
         assertThat(result).containsEntry("com.example.Valid", "DEBUG");
         assertThat(result).doesNotContainKey("com.example.Invalid");
         assertThat(result).doesNotContainKey("com.example.Empty");
-        assertThat(result).doesNotContainKey("com.example.Null");
 
-        verify(mockDynamoDbClient).getItem(any(GetItemRequest.class));
+        verify(mockDynamoDbClient).query(any(QueryRequest.class));
     }
 
     @Test
     void testFetchDesiredLevelsWithCaseInsensitiveLogLevels() throws Exception {
         // Arrange
-        Map<String, AttributeValue> loggersMap = Map.of(
-            "com.example.Lower", AttributeValue.builder().s("debug").build(),
-            "com.example.Mixed", AttributeValue.builder().s("WaRn").build(),
-            "com.example.Upper", AttributeValue.builder().s("ERROR").build()
+        List<Map<String, AttributeValue>> items = List.of(
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("com.example.Lower").build(),
+                "level", AttributeValue.builder().s("debug").build()
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("com.example.Mixed").build(),
+                "level", AttributeValue.builder().s("WaRn").build()
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("com.example.Upper").build(),
+                "level", AttributeValue.builder().s("ERROR").build()
+            )
         );
 
-        Map<String, AttributeValue> item = Map.of(
-            "service", AttributeValue.builder().s("test-service").build(),
-            "loggers", AttributeValue.builder().m(loggersMap).build()
-        );
-
-        GetItemResponse response = GetItemResponse.builder()
-            .item(item)
+        QueryResponse response = QueryResponse.builder()
+            .items(items)
             .build();
 
-        when(mockDynamoDbClient.getItem(any(GetItemRequest.class))).thenReturn(response);
+        when(mockDynamoDbClient.query(any(QueryRequest.class))).thenReturn(response);
 
         // Act
         Map<String, String> result = backend.fetchDesiredLevels();
@@ -160,32 +161,55 @@ class DynamoDBBackendTest {
         assertThat(result).containsEntry("com.example.Mixed", "WARN");
         assertThat(result).containsEntry("com.example.Upper", "ERROR");
 
-        verify(mockDynamoDbClient).getItem(any(GetItemRequest.class));
+        verify(mockDynamoDbClient).query(any(QueryRequest.class));
     }
 
     @Test
     void testFetchDesiredLevelsWithAllValidLogLevels() throws Exception {
         // Arrange
-        Map<String, AttributeValue> loggersMap = Map.of(
-            "trace", AttributeValue.builder().s("TRACE").build(),
-            "debug", AttributeValue.builder().s("DEBUG").build(),
-            "info", AttributeValue.builder().s("INFO").build(),
-            "warn", AttributeValue.builder().s("WARN").build(),
-            "error", AttributeValue.builder().s("ERROR").build(),
-            "fatal", AttributeValue.builder().s("FATAL").build(),
-            "off", AttributeValue.builder().s("OFF").build()
+        List<Map<String, AttributeValue>> items = List.of(
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("trace").build(),
+                "level", AttributeValue.builder().s("TRACE").build()
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("debug").build(),
+                "level", AttributeValue.builder().s("DEBUG").build()
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("info").build(),
+                "level", AttributeValue.builder().s("INFO").build()
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("warn").build(),
+                "level", AttributeValue.builder().s("WARN").build()
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("error").build(),
+                "level", AttributeValue.builder().s("ERROR").build()
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("fatal").build(),
+                "level", AttributeValue.builder().s("FATAL").build()
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("off").build(),
+                "level", AttributeValue.builder().s("OFF").build()
+            )
         );
 
-        Map<String, AttributeValue> item = Map.of(
-            "service", AttributeValue.builder().s("test-service").build(),
-            "loggers", AttributeValue.builder().m(loggersMap).build()
-        );
-
-        GetItemResponse response = GetItemResponse.builder()
-            .item(item)
+        QueryResponse response = QueryResponse.builder()
+            .items(items)
             .build();
 
-        when(mockDynamoDbClient.getItem(any(GetItemRequest.class))).thenReturn(response);
+        when(mockDynamoDbClient.query(any(QueryRequest.class))).thenReturn(response);
 
         // Act
         Map<String, String> result = backend.fetchDesiredLevels();
@@ -200,61 +224,114 @@ class DynamoDBBackendTest {
         assertThat(result).containsEntry("fatal", "FATAL");
         assertThat(result).containsEntry("off", "OFF");
 
-        verify(mockDynamoDbClient).getItem(any(GetItemRequest.class));
+        verify(mockDynamoDbClient).query(any(QueryRequest.class));
     }
 
     @Test
     void testFetchDesiredLevelsThrowsExceptionOnDynamoDbError() {
         // Arrange
         RuntimeException dynamoException = new RuntimeException("Table not found");
-        when(mockDynamoDbClient.getItem(any(GetItemRequest.class))).thenThrow(dynamoException);
+        when(mockDynamoDbClient.query(any(QueryRequest.class))).thenThrow(dynamoException);
 
         // Act & Assert
         assertThatThrownBy(() -> backend.fetchDesiredLevels())
             .isInstanceOf(Exception.class)
-            .hasMessageContaining("Failed to read from DynamoDB")
+            .hasMessageContaining("Failed to query DynamoDB")
             .hasCauseInstanceOf(RuntimeException.class);
 
-        verify(mockDynamoDbClient).getItem(any(GetItemRequest.class));
+        verify(mockDynamoDbClient).query(any(QueryRequest.class));
     }
 
     @Test
-    void testFetchDesiredLevelsWithEmptyLoggersMap() throws Exception {
+    void testFetchDesiredLevelsWithItemsMissingAttributes() throws Exception {
         // Arrange
-        Map<String, AttributeValue> emptyLoggersMap = new HashMap<>();
-
-        Map<String, AttributeValue> item = Map.of(
-            "service", AttributeValue.builder().s("test-service").build(),
-            "loggers", AttributeValue.builder().m(emptyLoggersMap).build()
+        List<Map<String, AttributeValue>> items = List.of(
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("valid.logger").build(),
+                "level", AttributeValue.builder().s("DEBUG").build()
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                // Missing logger attribute
+                "level", AttributeValue.builder().s("INFO").build()
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("missing.level").build()
+                // Missing level attribute
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("another.valid").build(),
+                "level", AttributeValue.builder().s("WARN").build()
+            )
         );
 
-        GetItemResponse response = GetItemResponse.builder()
-            .item(item)
+        QueryResponse response = QueryResponse.builder()
+            .items(items)
             .build();
 
-        when(mockDynamoDbClient.getItem(any(GetItemRequest.class))).thenReturn(response);
+        when(mockDynamoDbClient.query(any(QueryRequest.class))).thenReturn(response);
 
         // Act
         Map<String, String> result = backend.fetchDesiredLevels();
 
         // Assert
-        assertThat(result).isEmpty();
-        verify(mockDynamoDbClient).getItem(any(GetItemRequest.class));
+        assertThat(result).hasSize(2);
+        assertThat(result).containsEntry("valid.logger", "DEBUG");
+        assertThat(result).containsEntry("another.valid", "WARN");
+
+        verify(mockDynamoDbClient).query(any(QueryRequest.class));
     }
 
     @Test
-    void testFetchDesiredLevelsVerifiesCorrectRequestParameters() throws Exception {
+    void testFetchDesiredLevelsWithTTLItem() throws Exception {
+        // Arrange - Items with TTL attributes should still work
+        List<Map<String, AttributeValue>> items = List.of(
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("com.example.Temporary").build(),
+                "level", AttributeValue.builder().s("DEBUG").build(),
+                "ttl", AttributeValue.builder().n("1672531200").build() // TTL timestamp
+            ),
+            Map.of(
+                "service", AttributeValue.builder().s("test-service").build(),
+                "logger", AttributeValue.builder().s("com.example.Permanent").build(),
+                "level", AttributeValue.builder().s("INFO").build()
+                // No TTL - permanent override
+            )
+        );
+
+        QueryResponse response = QueryResponse.builder()
+            .items(items)
+            .build();
+
+        when(mockDynamoDbClient.query(any(QueryRequest.class))).thenReturn(response);
+
+        // Act
+        Map<String, String> result = backend.fetchDesiredLevels();
+
+        // Assert
+        assertThat(result).hasSize(2);
+        assertThat(result).containsEntry("com.example.Temporary", "DEBUG");
+        assertThat(result).containsEntry("com.example.Permanent", "INFO");
+
+        verify(mockDynamoDbClient).query(any(QueryRequest.class));
+    }
+
+    @Test
+    void testFetchDesiredLevelsVerifiesCorrectQueryRequest() throws Exception {
         // Arrange
-        GetItemResponse response = GetItemResponse.builder().build();
-        when(mockDynamoDbClient.getItem(any(GetItemRequest.class))).thenReturn(response);
+        QueryResponse response = QueryResponse.builder()
+            .items(new ArrayList<>())
+            .build();
+        when(mockDynamoDbClient.query(any(QueryRequest.class))).thenReturn(response);
 
         // Act
         backend.fetchDesiredLevels();
 
-        // Assert - Verify the request was built correctly
-        verify(mockDynamoDbClient).getItem(any(GetItemRequest.class));
-        
-        // Additional verification using argument captor for more detailed assertions
-        verify(mockDynamoDbClient, times(1)).getItem(any(GetItemRequest.class));
+        // Assert - Verify the query was called with correct parameters
+        verify(mockDynamoDbClient, times(1)).query(any(QueryRequest.class));
     }
 }

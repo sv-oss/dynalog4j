@@ -18,7 +18,6 @@ DynaLog4J is a Java application designed to dynamically manage log levels of a c
 - **Container-ready**: Packaged as a slim Docker container for easy deployment
 - **Kubernetes-friendly**: Designed to run as a sidecar in Kubernetes pods
 - **Dry-run support**: Test configuration changes without applying them
-- **Testable**: Clean configuration abstraction makes testing easy
 
 ## Command Line Interface
 
