@@ -66,6 +66,12 @@ jobs:
         run: |-
           VERSION=$(echo ${{ needs.release-please.outputs.tag_name }} | sed 's/^v//')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Extract major and minor versions for floating tags
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MAJOR_MINOR=$(echo $VERSION | cut -d. -f1-2)
+          echo "major=$MAJOR" >> $GITHUB_OUTPUT
+          echo "major_minor=$MAJOR_MINOR" >> $GITHUB_OUTPUT
       - name: Build and push multi-architecture Docker image
         uses: docker/build-push-action@v5
         with:
@@ -75,6 +81,8 @@ jobs:
           tags: |-
             ghcr.io/${{ github.repository_owner }}/dynalog4j:latest
             ghcr.io/${{ github.repository_owner }}/dynalog4j:${{ steps.extract-version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/dynalog4j:${{ steps.extract-version.outputs.major }}
+            ghcr.io/${{ github.repository_owner }}/dynalog4j:${{ steps.extract-version.outputs.major_minor }}
           push: true
           context: .
           # Optimize build with build arguments
