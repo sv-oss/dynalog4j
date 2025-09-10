@@ -21,15 +21,15 @@ class BackendFactoryIntegrationTest {
 
     @Test
     void testCreateBackendReturnsValidBackend() throws Exception {
-        // Arrange - Create a default configuration
-        AppConfiguration config = AppConfiguration.parse(new String[]{});
+        // Arrange - Create a configuration with explicit env backend to avoid environment variable interference
+        AppConfiguration config = AppConfiguration.parse(new String[]{"--backend", "env"});
 
         // Act - BackendFactory should return a valid backend based on configuration
         Backend backend = BackendFactory.createBackend(config);
 
-        // Assert - Should return some valid backend type
+        // Assert - Should return EnvBackend when explicitly configured
         assertThat(backend).isNotNull();
-        assertThat(backend).isInstanceOfAny(EnvBackend.class, FileBackend.class, DynamoDBBackend.class);
+        assertThat(backend).isInstanceOf(EnvBackend.class);
     }
 
     @Test
