@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.1](https://github.com/sv-oss/dynalog4j/compare/v2.2.0...v2.2.1) (2025-09-10)
+
+
+### Bug Fixes
+
+* fail if specified logger context is not found ([1384c7f](https://github.com/sv-oss/dynalog4j/commit/1384c7f6a2ca80482a2180ce0a190d6900820b39))
+
 ## [2.2.0](https://github.com/sv-oss/dynalog4j/compare/v2.1.0...v2.2.0) (2025-09-10)
 
 
