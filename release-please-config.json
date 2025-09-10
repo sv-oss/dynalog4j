@@ -2,7 +2,6 @@
   "packages": {
     ".": {
       "release-type": "maven",
-      "package-name": "dynalog4j",
       "skip-snapshot": true
     }
   }
