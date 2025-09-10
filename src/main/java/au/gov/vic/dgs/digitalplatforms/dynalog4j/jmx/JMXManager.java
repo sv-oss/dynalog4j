@@ -299,7 +299,8 @@ public class JMXManager {
                     return context;
                 }
             }
-            logger.warn("Specified LoggerContext '{}' not found, using auto-detection", targetLoggerContext);
+            throw new IllegalArgumentException("Specified LoggerContext '" + targetLoggerContext + "' not found. Available contexts: " + 
+                contexts.stream().map(LoggerContext::getName).collect(java.util.stream.Collectors.toList()));
         }
 
         // Auto-detection: prefer non-system contexts, or use the first one
@@ -311,7 +312,7 @@ public class JMXManager {
         String selectedDisplayName = (selected.getName() == null || selected.getName().isEmpty()) 
             ? "<default-context>" 
             : selected.getName();
-                
+
         logger.info("Auto-selected LoggerContext: {} (ObjectName: {})", 
                    selectedDisplayName, selected.getObjectName());
         return selected;

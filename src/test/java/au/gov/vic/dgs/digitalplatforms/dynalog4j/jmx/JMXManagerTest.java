@@ -7,6 +7,8 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import au.gov.vic.dgs.digitalplatforms.dynalog4j.config.AppConfiguration;
+
 import javax.management.*;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
@@ -197,27 +199,34 @@ class JMXManagerTest {
 
     @Test
     void testSelectLoggerContextWithTargetSpecified() throws Exception {
-        // We can't test environment variables easily, so test the selection logic directly
+        // Test that the correct context is selected when target is specified and found
         List<LoggerContext> contexts = createTestContexts();
         
-        // Test the auto-selection logic when no target is specified
-        LoggerContext selected = jmxManager.selectLoggerContext(contexts);
+        // Create a JMXManager with a target context that exists
+        AppConfiguration config = new AppConfiguration();
+        config.setTargetLoggerContext("AppContext");
+        JMXManager managerWithTarget = new JMXManager(config);
 
-        // Should prefer non-system context
+        LoggerContext selected = managerWithTarget.selectLoggerContext(contexts);
+
+        // Should select the specified target context
         assertThat(selected.getName()).isEqualTo("AppContext");
     }
 
     @Test
     void testSelectLoggerContextWithTargetNotFound() throws Exception {
-        // Test fallback behavior when target context is not found
+        // Test that an exception is thrown when target context is not found
         List<LoggerContext> contexts = createTestContexts();
+        
+        // Create a JMXManager with a target context that doesn't exist
+        AppConfiguration config = new AppConfiguration();
+        config.setTargetLoggerContext("NonExistentContext");
+        JMXManager managerWithTarget = new JMXManager(config);
 
-        // When no specific target environment variable is set or target not found,
-        // should auto-select first non-system context
-        LoggerContext selected = jmxManager.selectLoggerContext(contexts);
-
-        // Then (should auto-select first non-system context)
-        assertThat(selected.getName()).isEqualTo("AppContext");
+        // When/Then - should throw exception when target context not found
+        assertThatThrownBy(() -> managerWithTarget.selectLoggerContext(contexts))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Specified LoggerContext 'NonExistentContext' not found");
     }
 
     @Test
