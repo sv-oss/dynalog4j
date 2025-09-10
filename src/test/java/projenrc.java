@@ -114,27 +114,20 @@ public class projenrc {
         
         workflow.addJob("test", Job.builder()
             .runsOn(List.of("ubuntu-latest"))
-            .permissions(JobPermissions.builder().build())  // Default permissions
+            .permissions(JobPermissions.builder()
+                .contents(io.github.cdklabs.projen.github.workflows.JobPermission.READ)
+                .build())
             .steps(List.of(
                 JobStep.builder()
                     .name("Checkout code")
                     .uses("actions/checkout@v4")
                     .build(),
                 JobStep.builder()
-                    .name("Set up Java 21")
-                    .uses("actions/setup-java@v4")
+                    .name("Set up Java and Maven")
+                    .uses("s4u/setup-maven-action@v1.18.0")
                     .with(Map.of(
                         "java-version", "21",
-                        "distribution", "temurin"
-                    ))
-                    .build(),
-                JobStep.builder()
-                    .name("Cache Maven dependencies")
-                    .uses("actions/cache@v3")
-                    .with(Map.of(
-                        "path", "~/.m2",
-                        "key", "${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}",
-                        "restore-keys", "${{ runner.os }}-maven-"
+                        "java-distribution", "temurin"
                     ))
                     .build(),
                 JobStep.builder()
@@ -315,20 +308,15 @@ public class projenrc {
             .steps(List.of(
                 JobStep.builder().name("Checkout code").uses("actions/checkout@v4").build(),
                 JobStep.builder()
-                    .name("Set up Java 21")
-                    .uses("actions/setup-java@v4")
-                    .with(Map.of("java-version", "21", "distribution", "temurin"))
-                    .build(),
-                JobStep.builder()
-                    .name("Cache Maven dependencies")
-                    .uses("actions/cache@v3")
+                    .name("Set up Java and Maven")
+                    .uses("s4u/setup-maven-action@v1.18.0")
                     .with(Map.of(
-                        "path", "~/.m2",
-                        "key", "${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}",
-                        "restore-keys", "${{ runner.os }}-maven-"
+                        "java-version", "21",
+                        "java-distribution", "temurin"
                     ))
                     .build(),
-                JobStep.builder().name("Build and package").run("mvn clean package").build(),
+                JobStep.builder().name("Build and package").run("mvn clean package")
+                    .build(),
                 JobStep.builder()
                     .name("Upload release assets")
                     .uses("softprops/action-gh-release@v1")

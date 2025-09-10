@@ -24,4 +24,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD pgrep -f "java.*dynalog4j" > /dev/null || exit 1
 
 # Run the sidecar
-ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=80.0", "-jar", "/app/dynalog4j.jar"]
+ENTRYPOINT ["java", "-jar", "/app/dynalog4j.jar"]
