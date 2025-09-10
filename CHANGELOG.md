@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/sv-oss/dynalog4j/compare/v2.1.0...v2.2.0) (2025-09-10)
+
+
+### Features
+
+* add retry functionality with configurable attempts and intervals ([d1d8f72](https://github.com/sv-oss/dynalog4j/commit/d1d8f720a65fc91a0f2bc246b2eeec51ad6e78f1))
+
 ## [2.1.0](https://github.com/sv-oss/dynalog4j/compare/v2.0.0...v2.1.0) (2025-09-10)
 
 
