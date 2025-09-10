@@ -213,47 +213,48 @@ public class JMXManager {
                 logger.info("  - {}", objectName);
             }
             
-            // Look for LoggerContext MBeans (these have configuration management operations)
+            // Look for main LoggerContext MBeans with config operations
             List<LoggerContext> contexts = new ArrayList<>();
             
-            // Try different patterns that might contain configuration management
-            String[] patterns = {
-                "org.apache.logging.log4j2:type=*,component=Loggers,name=*",
-                "org.apache.logging.log4j2:type=*,component=LoggerContext,name=*", 
-                "org.apache.logging.log4j2:type=*,component=ContextSelector,name=*",
-                "org.apache.logging.log4j2:type=*"
-            };
+            // Simplified: only look for org.apache.logging.log4j2:type=* MBeans
+            ObjectName searchPattern = new ObjectName("org.apache.logging.log4j2:type=*");
+            Set<ObjectInstance> foundMbeans = connection.queryMBeans(searchPattern, null);
             
-            for (String patternStr : patterns) {
-                ObjectName searchPattern = new ObjectName(patternStr);
-                Set<ObjectInstance> foundMbeans = connection.queryMBeans(searchPattern, null);
+            for (ObjectInstance mbean : foundMbeans) {
+                ObjectName objectName = mbean.getObjectName();
+                String type = objectName.getKeyProperty("type");
+                String component = objectName.getKeyProperty("component");
                 
-                for (ObjectInstance mbean : foundMbeans) {
-                    ObjectName objectName = mbean.getObjectName();
-                    String contextName = objectName.getKeyProperty("name");
-                    String component = objectName.getKeyProperty("component");
-                    String type = objectName.getKeyProperty("type");
+                // Skip component MBeans, we only want main LoggerContext MBeans
+                if (component != null) {
+                    continue;
+                }
+                
+                logger.debug("Checking LoggerContext MBean: {} (type: '{}')", objectName, type);
+                
+                // Check if this MBean has the config operations we need
+                try {
+                    javax.management.MBeanInfo mbeanInfo = connection.getMBeanInfo(objectName);
+                    boolean hasGetConfigText = false;
+                    boolean hasSetConfigText = false;
                     
-                    logger.debug("Checking MBean: {} (component: {}, type: {}, name: '{}')", 
-                               objectName, component, type, contextName);
-                    
-                    // Check if this MBean has configuration operations
-                    try {
-                        javax.management.MBeanInfo mbeanInfo = connection.getMBeanInfo(objectName);
-                        boolean hasConfigOps = false;
-                        for (javax.management.MBeanOperationInfo op : mbeanInfo.getOperations()) {
-                            if (op.getName().toLowerCase().contains("config")) {
-                                hasConfigOps = true;
-                                logger.info("Found config operation: {} on {}", op.getName(), objectName);
-                            }
+                    for (javax.management.MBeanOperationInfo op : mbeanInfo.getOperations()) {
+                        String opName = op.getName();
+                        if ("getConfigText".equals(opName)) {
+                            hasGetConfigText = true;
+                            logger.info("Found getConfigText operation on {}", objectName);
+                        } else if ("setConfigText".equals(opName)) {
+                            hasSetConfigText = true;
+                            logger.info("Found setConfigText operation on {}", objectName);
                         }
-                        
-                        if (hasConfigOps) {
-                            contexts.add(new LoggerContext(objectName, contextName));
-                        }
-                    } catch (Exception e) {
-                        logger.debug("Could not inspect MBean {}: {}", objectName, e.getMessage());
                     }
+                    
+                    if (hasGetConfigText && hasSetConfigText) {
+                        contexts.add(new LoggerContext(objectName, type));
+                        logger.info("Added LoggerContext: {} (type: {})", objectName, type);
+                    }
+                } catch (Exception e) {
+                    logger.debug("Could not inspect MBean {}: {}", objectName, e.getMessage());
                 }
             }
             
@@ -292,14 +293,29 @@ public class JMXManager {
         }
         
         if (targetLoggerContext != null && !targetLoggerContext.trim().isEmpty()) {
-            // User specified a target context name
+            // User specified a target context pattern (supports regex)
+            String pattern = targetLoggerContext.trim();
+            
             for (LoggerContext context : contexts) {
-                if (targetLoggerContext.equals(context.getName())) {
-                    logger.info("Using specified LoggerContext: {}", targetLoggerContext);
-                    return context;
+                String contextName = context.getName();
+                if (contextName != null) {
+                    try {
+                        // Try regex matching first
+                        if (contextName.matches(pattern)) {
+                            logger.info("Using LoggerContext matching pattern '{}': {}", pattern, contextName);
+                            return context;
+                        }
+                    } catch (Exception e) {
+                        // If regex fails, try exact match
+                        if (pattern.equals(contextName)) {
+                            logger.info("Using LoggerContext (exact match): {}", contextName);
+                            return context;
+                        }
+                    }
                 }
             }
-            throw new IllegalArgumentException("Specified LoggerContext '" + targetLoggerContext + "' not found. Available contexts: " + 
+            
+            throw new IllegalArgumentException("No LoggerContext found matching pattern '" + pattern + "'. Available contexts: " + 
                 contexts.stream().map(LoggerContext::getName).collect(java.util.stream.Collectors.toList()));
         }
 

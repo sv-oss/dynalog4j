@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jdk
+FROM eclipse-temurin:21-jdk-alpine
 
 LABEL maintainer="Your Team <team@yourcompany.com>"
 LABEL description="Dynamic Log4j2 Level Management Tool"

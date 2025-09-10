@@ -226,7 +226,7 @@ class JMXManagerTest {
         // When/Then - should throw exception when target context not found
         assertThatThrownBy(() -> managerWithTarget.selectLoggerContext(contexts))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Specified LoggerContext 'NonExistentContext' not found");
+            .hasMessageContaining("No LoggerContext found matching pattern 'NonExistentContext'");
     }
 
     @Test
@@ -265,6 +265,104 @@ class JMXManagerTest {
         assertThatThrownBy(() -> jmxManager.selectLoggerContext(contexts))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("No LoggerContexts found");
+    }
+
+    @Test
+    void testSelectLoggerContextWithRegexPattern() throws Exception {
+        // Given
+        List<LoggerContext> contexts = List.of(
+            new LoggerContext(new ObjectName("test:type=Tomcat"), "Tomcat"),
+            new LoggerContext(new ObjectName("test:type=1280851e"), "1280851e"),
+            new LoggerContext(new ObjectName("test:type=32a033b6"), "32a033b6")
+        );
+        
+        AppConfiguration config = new AppConfiguration();
+        config.setTargetLoggerContext("^(?!Tomcat$).*"); // Match anything except "Tomcat"
+        JMXManager managerWithRegex = new JMXManager(config);
+
+        // When
+        LoggerContext selected = managerWithRegex.selectLoggerContext(contexts);
+
+        // Then (should select first non-Tomcat context)
+        assertThat(selected.getName()).isIn("1280851e", "32a033b6");
+        assertThat(selected.getName()).isNotEqualTo("Tomcat");
+    }
+
+    @Test
+    void testSelectLoggerContextWithHashPattern() throws Exception {
+        // Given
+        List<LoggerContext> contexts = List.of(
+            new LoggerContext(new ObjectName("test:type=Tomcat"), "Tomcat"),
+            new LoggerContext(new ObjectName("test:type=1280851e"), "1280851e"),
+            new LoggerContext(new ObjectName("test:type=SomeOtherName"), "SomeOtherName")
+        );
+        
+        AppConfiguration config = new AppConfiguration();
+        config.setTargetLoggerContext("[a-f0-9]{8}"); // Match 8-character hex strings
+        JMXManager managerWithRegex = new JMXManager(config);
+
+        // When
+        LoggerContext selected = managerWithRegex.selectLoggerContext(contexts);
+
+        // Then (should select the hex hash context)
+        assertThat(selected.getName()).isEqualTo("1280851e");
+    }
+
+    @Test
+    void testSelectLoggerContextWithExactMatchFallback() throws Exception {
+        // Given
+        List<LoggerContext> contexts = List.of(
+            new LoggerContext(new ObjectName("test:type=App"), "App"),
+            new LoggerContext(new ObjectName("test:type=Tomcat"), "Tomcat")
+        );
+        
+        AppConfiguration config = new AppConfiguration();
+        config.setTargetLoggerContext("App"); // Exact match
+        JMXManager managerWithExact = new JMXManager(config);
+
+        // When
+        LoggerContext selected = managerWithExact.selectLoggerContext(contexts);
+
+        // Then (should select exact match)
+        assertThat(selected.getName()).isEqualTo("App");
+    }
+
+    @Test
+    void testSelectLoggerContextWithInvalidRegexFallbackToExact() throws Exception {
+        // Given
+        List<LoggerContext> contexts = List.of(
+            new LoggerContext(new ObjectName("test:type=App["), "App["), // Invalid regex but valid name
+            new LoggerContext(new ObjectName("test:type=Tomcat"), "Tomcat")
+        );
+        
+        AppConfiguration config = new AppConfiguration();
+        config.setTargetLoggerContext("App["); // Invalid regex pattern
+        JMXManager managerWithInvalid = new JMXManager(config);
+
+        // When
+        LoggerContext selected = managerWithInvalid.selectLoggerContext(contexts);
+
+        // Then (should fall back to exact match)
+        assertThat(selected.getName()).isEqualTo("App[");
+    }
+
+    @Test
+    void testSelectLoggerContextRegexPatternNotFound() throws Exception {
+        // Given
+        List<LoggerContext> contexts = List.of(
+            new LoggerContext(new ObjectName("test:type=Tomcat"), "Tomcat"),
+            new LoggerContext(new ObjectName("test:type=System"), "System")
+        );
+        
+        AppConfiguration config = new AppConfiguration();
+        config.setTargetLoggerContext("^App.*"); // Pattern that won't match any context
+        JMXManager managerWithRegex = new JMXManager(config);
+
+        // When/Then
+        assertThatThrownBy(() -> managerWithRegex.selectLoggerContext(contexts))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("No LoggerContext found matching pattern '^App.*'")
+            .hasMessageContaining("Available contexts: [Tomcat, System]");
     }
 
     @Test
@@ -458,37 +556,42 @@ class JMXManagerTest {
     }
 
     private void setupMockMBeansWithConfigOperations() throws Exception {
-        ObjectName objectName = new ObjectName("org.apache.logging.log4j2:type=TestContext,component=Loggers,name=TestContext");
+        ObjectName objectName = new ObjectName("org.apache.logging.log4j2:type=TestContext");
         when(mockObjectInstance.getObjectName()).thenReturn(objectName);
         
         Set<ObjectInstance> mbeans = Set.of(mockObjectInstance);
         
-        // Set up to return empty for first few patterns, then return our MBean for one pattern
+        // Set up queries: first for all MBeans, then for type=* pattern
         when(mockConnection.queryMBeans(any(ObjectName.class), isNull()))
-            .thenReturn(Set.of()) // First pattern empty
-            .thenReturn(mbeans)   // Second pattern has our MBean
-            .thenReturn(Set.of()) // Rest empty
-            .thenReturn(Set.of());
+            .thenReturn(mbeans)   // First query (all log4j2 MBeans)
+            .thenReturn(mbeans);  // Second query (type=* pattern)
         
         when(mockConnection.getMBeanInfo(any(ObjectName.class))).thenReturn(mockMBeanInfo);
         when(mockMBeanInfo.getOperations()).thenReturn(new MBeanOperationInfo[]{
-            new MBeanOperationInfo("setConfigText", "Set config", new MBeanParameterInfo[]{}, "void", MBeanOperationInfo.ACTION)
+            new MBeanOperationInfo("getConfigText", "Get config text", new MBeanParameterInfo[]{}, "java.lang.String", MBeanOperationInfo.INFO),
+            new MBeanOperationInfo("setConfigText", "Set config text", new MBeanParameterInfo[]{}, "void", MBeanOperationInfo.ACTION)
         });
     }
 
     private void setupMockMBeansWithoutConfigOperations() throws Exception {
-        ObjectName objectName = new ObjectName("org.apache.logging.log4j2:type=TestContext,component=Loggers,name=TestContext");
-        when(mockObjectInstance.getObjectName()).thenReturn(objectName);
+        ObjectName typeObjectName = new ObjectName("org.apache.logging.log4j2:type=TestContext");
+        ObjectName loggersObjectName = new ObjectName("org.apache.logging.log4j2:type=TestContext,component=Loggers,name=TestContext");
         
-        // First query returns empty, second query (fallback) returns the MBean
+        ObjectInstance typeInstance = mock(ObjectInstance.class);
+        ObjectInstance loggersInstance = mock(ObjectInstance.class);
+        
+        when(typeInstance.getObjectName()).thenReturn(typeObjectName);
+        when(loggersInstance.getObjectName()).thenReturn(loggersObjectName);
+        
+        // Main discovery: first query shows all MBeans, second query shows type=* MBeans but without config ops
+        // Third query (fallback) returns the Loggers MBean
         when(mockConnection.queryMBeans(any(ObjectName.class), isNull()))
-            .thenReturn(Set.of()) // First few patterns return empty
-            .thenReturn(Set.of()) 
-            .thenReturn(Set.of())
-            .thenReturn(Set.of())
-            .thenReturn(Set.of(mockObjectInstance)); // Last pattern (fallback) returns the MBean
+            .thenReturn(Set.of(typeInstance, loggersInstance)) // First query (all log4j2 MBeans)
+            .thenReturn(Set.of(typeInstance)) // Second query (type=* pattern) - has MBean but no config ops
+            .thenReturn(Set.of(loggersInstance)); // Third query (fallback to Loggers pattern)
         
-        when(mockConnection.getMBeanInfo(any(ObjectName.class))).thenReturn(mockMBeanInfo);
+        // Set up MBeanInfo for the type=* MBean (no config operations)
+        when(mockConnection.getMBeanInfo(typeObjectName)).thenReturn(mockMBeanInfo);
         when(mockMBeanInfo.getOperations()).thenReturn(new MBeanOperationInfo[]{
             new MBeanOperationInfo("someOtherMethod", "Other", new MBeanParameterInfo[]{}, "void", MBeanOperationInfo.ACTION)
         });

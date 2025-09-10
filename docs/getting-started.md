@@ -72,7 +72,25 @@ java --add-opens java.base/java.lang=ALL-UNNAMED \
 | `RECONCILE_INTERVAL_SECONDS` | `30` | How often to check for changes |
 | `JMX_HOST` | `localhost` | JMX endpoint hostname |
 | `JMX_PORT` | `9999` | JMX endpoint port |
-| `TARGET_LOGGER_CONTEXT` | (auto-detect) | Specific LoggerContext name |
+| `TARGET_LOGGER_CONTEXT` | (auto-detect) | Specific LoggerContext name or regex pattern |
+
+## LoggerContext Selection
+
+DynaLog4J automatically discovers Log4j2 LoggerContexts but allows you to specify a target:
+
+### Pattern Matching
+- **Exact match**: `TARGET_LOGGER_CONTEXT="MyAppContext"`
+- **Regex patterns**: `TARGET_LOGGER_CONTEXT="^(?!Tomcat$).*"` (exclude Tomcat)
+- **Hash matching**: `TARGET_LOGGER_CONTEXT="[a-f0-9]{8}"` (8-char hex hashes)
+
+### Examples
+```bash
+# Exclude system contexts
+export TARGET_LOGGER_CONTEXT="^(?!Tomcat$).*"
+
+# Match application contexts only
+export TARGET_LOGGER_CONTEXT=".*App.*"
+```
 
 ## Troubleshooting
 
@@ -89,6 +107,11 @@ java --add-opens java.base/java.lang=ALL-UNNAMED \
 3. **"Configuration unchanged"**
    - Verify your backend is returning the expected log levels
    - Check the sidecar logs for backend errors
+
+4. **"No LoggerContext found matching pattern"**
+   - Check available contexts with verbose logging: `--verbose`
+   - Verify your `TARGET_LOGGER_CONTEXT` pattern syntax
+   - Use exact context name if regex pattern fails
 
 ### Enable Debug Logging
 

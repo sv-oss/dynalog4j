@@ -42,7 +42,7 @@ All options can be provided via CLI arguments or environment variables. CLI argu
 | `--jmx-port` | | `JMX_PORT` | `9999` | JMX port |
 | `--jmx-pid` | | `JMX_PID` | (auto-discover) | Process ID to attach to (alternative to host/port) |
 | `--jmx-pid-filter` | | `JMX_PID_FILTER` | (none) | Process command pattern to filter discoverable PIDs |
-| `--target-context` | | `TARGET_LOGGER_CONTEXT` | auto-select | Target LoggerContext name |
+| `--target-context` | | `TARGET_LOGGER_CONTEXT` | auto-select | Target LoggerContext name or regex pattern |
 | `--interval` | `-i` | `RECONCILE_INTERVAL_SECONDS` | `30` | Reconciliation interval in seconds |
 | `--dry-run` | | `DRY_RUN` | `false` | Run in dry-run mode (no actual changes) |
 | `--verbose` | `-v` | `VERBOSE` | `false` | Enable verbose logging |
@@ -77,6 +77,18 @@ java -jar DynaLog4J-1.0.0.jar \
   --jmx-port 8888 \
   --target-context MyAppContext \
   --verbose
+```
+
+#### LoggerContext pattern matching
+```bash
+# Exclude Tomcat context, target application contexts
+java -jar DynaLog4J-1.0.0.jar --target-context "^(?!Tomcat$).*"
+
+# Target contexts with hexadecimal hash IDs
+java -jar DynaLog4J-1.0.0.jar --target-context "[a-f0-9]{8}"
+
+# Target any context containing "App"
+java -jar DynaLog4J-1.0.0.jar --target-context ".*App.*"
 ```
 
 #### Process ID (PID) attachment
@@ -202,6 +214,38 @@ java -Dlog4j2.disableJmx=false -jar your-app.jar
 
 **Note**: When using PID attachment (`--jmx-pid` or auto-discovery), DynaLog4J can automatically start the JMX management agent if it's not already running, making explicit JMX configuration optional.
 
+### LoggerContext Selection
+
+DynaLog4J can automatically discover and target specific Log4j2 LoggerContexts in your application. By default, it auto-selects the most appropriate context, but you can specify a target using `TARGET_LOGGER_CONTEXT`.
+
+#### Pattern Matching Support
+
+`TARGET_LOGGER_CONTEXT` supports both exact matching and regex patterns:
+
+```bash
+# Exact context name matching
+TARGET_LOGGER_CONTEXT="MyAppContext"
+
+# Regex pattern to exclude system contexts (e.g., Tomcat)
+TARGET_LOGGER_CONTEXT="^(?!Tomcat$).*"
+
+# Match contexts with 8-character hexadecimal hash IDs
+TARGET_LOGGER_CONTEXT="[a-f0-9]{8}"
+
+# Match any context containing "App"
+TARGET_LOGGER_CONTEXT=".*App.*"
+```
+
+**Behavior**:
+- If a pattern is specified but no matching context is found, DynaLog4J will fail with an error
+- Regex patterns are tried first; if regex parsing fails, exact string matching is used as fallback
+- Auto-detection prefers non-system contexts when no target is specified
+
+**Common Use Cases**:
+- **Application Servers**: Use `^(?!Tomcat$).*` to automatically select your application's context while excluding Tomcat's internal context
+- **Hash-based Contexts**: Use `[a-f0-9]{8}` when Log4j2 generates hash-based context names
+- **Multiple Apps**: Use specific patterns to target individual applications in multi-app environments
+
 ### 4. Run DynaLog4J
 
 #### Using Environment Variables Backend
@@ -286,7 +330,7 @@ DynaLog4J offers flexible connection options:
 | `JMX_PORT` | `9999` | JMX endpoint port (for traditional JMX) |
 | `JMX_PID` | (auto-discover) | Process ID to attach to |
 | `JMX_PID_FILTER` | (none) | Filter pattern for process auto-discovery |
-| `TARGET_LOGGER_CONTEXT` | (auto-detect) | Specific LoggerContext name to target |
+| `TARGET_LOGGER_CONTEXT` | (auto-detect) | Specific LoggerContext name or regex pattern to target |
 | `MAX_ATTEMPTS` | `0` | Maximum retry attempts for main loop failures (0 = no retry) |
 | `RETRY_INTERVAL_SECONDS` | `60` | Retry interval in seconds between restart attempts |
 
