@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.2](https://github.com/sv-oss/dynalog4j/compare/v2.3.1...v2.3.2) (2025-09-11)
+
+
+### Bug Fixes
+
+* potential memory leaks ([bcbadf2](https://github.com/sv-oss/dynalog4j/commit/bcbadf22c9dc33873110834767ff6ba23dd82aad))
+
 ## [2.3.1](https://github.com/sv-oss/dynalog4j/compare/v2.3.0...v2.3.1) (2025-09-11)
 
 
