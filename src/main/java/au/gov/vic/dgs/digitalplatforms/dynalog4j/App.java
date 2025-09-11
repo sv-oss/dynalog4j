@@ -192,11 +192,6 @@ public class App {
         // Fetch desired levels from backend
         Map<String, String> desiredLevels = backend.fetchDesiredLevels();
         
-        if (desiredLevels.isEmpty()) {
-            logger.debug("No desired log levels configured, skipping reconciliation");
-            return;
-        }
-
         // Get current configuration
         String currentConfig = jmxManager.getConfigurationText(targetContext);
         if (currentConfig == null || currentConfig.trim().isEmpty()) {
@@ -204,7 +199,7 @@ public class App {
             return;
         }
 
-        // Reconcile configuration
+        // Reconcile configuration (even if desiredLevels is empty, to clean up previous overrides)
         String updatedConfig = reconciler.reconcileConfiguration(currentConfig, desiredLevels);
         
         // Check if configuration actually changed
@@ -215,11 +210,19 @@ public class App {
 
         // Apply updated configuration (unless in dry-run mode)
         if (config.isDryRun()) {
-            logger.info("DRY RUN: Would update configuration with {} overrides", desiredLevels.size());
+            if (desiredLevels.isEmpty()) {
+                logger.info("DRY RUN: Would clean up any existing log level overrides");
+            } else {
+                logger.info("DRY RUN: Would update configuration with {} overrides", desiredLevels.size());
+            }
             logger.debug("DRY RUN: Updated configuration would be:\n{}", updatedConfig);
         } else {
             jmxManager.setConfigurationText(targetContext, updatedConfig);
-            logger.info("Configuration successfully updated with {} overrides", desiredLevels.size());
+            if (desiredLevels.isEmpty()) {
+                logger.info("Configuration successfully updated (cleaned up existing overrides)");
+            } else {
+                logger.info("Configuration successfully updated with {} overrides", desiredLevels.size());
+            }
         }
     }
 
