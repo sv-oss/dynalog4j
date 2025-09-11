@@ -139,6 +139,9 @@ public class App {
             } catch (Exception e) {
                 logger.error("Application failed on attempt {} of {}: {}", attempt, maxAttempts, e.getMessage(), e);
                 
+                // Clean up resources before potentially retrying
+                cleanup();
+                
                 // If this was the last attempt, exit with error
                 if (attempt >= maxAttempts) {
                     logger.error("Maximum retry attempts ({}) exceeded. Exiting.", maxAttempts);
@@ -229,6 +232,9 @@ public class App {
     private void cleanup() {
         if (jmxManager != null) {
             jmxManager.disconnect();
+        }
+        if (backend != null) {
+            backend.close();
         }
     }
 }

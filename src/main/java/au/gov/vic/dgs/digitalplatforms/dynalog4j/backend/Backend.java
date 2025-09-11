@@ -13,4 +13,12 @@ public interface Backend {
      * @throws Exception if unable to fetch desired levels
      */
     Map<String, String> fetchDesiredLevels() throws Exception;
+    
+    /**
+     * Close/cleanup any resources used by this backend.
+     * Should be called when the backend is no longer needed.
+     */
+    default void close() {
+        // Default implementation does nothing for backwards compatibility
+    }
 }

@@ -35,6 +35,7 @@ public class DynamoDBBackend implements Backend {
     private static final Logger logger = LoggerFactory.getLogger(DynamoDBBackend.class);
     
     private final DynamoDbClientWrapper dynamoDbClient;
+    private final DynamoDbClient awsClient; // Keep reference to close it
     private final String tableName;
     private final String serviceName;
 
@@ -48,10 +49,10 @@ public class DynamoDBBackend implements Backend {
     public DynamoDBBackend(String tableName, String serviceName) {
         this.tableName = tableName;
         this.serviceName = serviceName;
-        DynamoDbClient client = DynamoDbClient.builder()
+        this.awsClient = DynamoDbClient.builder()
                 .credentialsProvider(DefaultCredentialsProvider.create())
                 .build();
-        this.dynamoDbClient = new DefaultDynamoDbClientWrapper(client);
+        this.dynamoDbClient = new DefaultDynamoDbClientWrapper(awsClient);
     }
 
     // Constructor for testing
@@ -59,6 +60,7 @@ public class DynamoDBBackend implements Backend {
         this.tableName = tableName;
         this.serviceName = serviceName;
         this.dynamoDbClient = dynamoDbClient;
+        this.awsClient = null; // No AWS client to close in test mode
     }
 
     @Override
@@ -125,5 +127,17 @@ public class DynamoDBBackend implements Backend {
                upperLevel.equals("ERROR") || 
                upperLevel.equals("FATAL") ||
                upperLevel.equals("OFF");
+    }
+    
+    @Override
+    public void close() {
+        if (awsClient != null) {
+            try {
+                awsClient.close();
+                logger.info("Closed DynamoDB client");
+            } catch (Exception e) {
+                logger.warn("Error closing DynamoDB client: {}", e.getMessage());
+            }
+        }
     }
 }

@@ -175,7 +175,9 @@ public class ConfigurationReconciler {
 
     private Document parseXml(String xml) throws ParserConfigurationException, SAXException, IOException {
         DocumentBuilder builder = documentBuilderFactory.newDocumentBuilder();
-        return builder.parse(new InputSource(new StringReader(xml)));
+        try (StringReader reader = new StringReader(xml)) {
+            return builder.parse(new InputSource(reader));
+        }
     }
 
     private Element findOrCreateLoggersElement(Document document, Element root) {
@@ -293,8 +295,12 @@ public class ConfigurationReconciler {
         transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
         transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
         
-        StringWriter writer = new StringWriter();
-        transformer.transform(new DOMSource(document), new StreamResult(writer));
-        return writer.toString();
+        try (StringWriter writer = new StringWriter()) {
+            transformer.transform(new DOMSource(document), new StreamResult(writer));
+            return writer.toString();
+        } catch (IOException e) {
+            // StringWriter close() doesn't actually throw IOException, but just in case
+            throw new TransformerException("Error closing StringWriter", e);
+        }
     }
 }

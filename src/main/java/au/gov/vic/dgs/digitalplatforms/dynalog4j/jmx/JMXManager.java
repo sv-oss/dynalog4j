@@ -181,6 +181,9 @@ public class JMXManager {
                 logger.info("Disconnected from JMX endpoint");
             } catch (IOException e) {
                 logger.warn("Error closing JMX connection: {}", e.getMessage());
+            } finally {
+                connector = null;
+                connection = null;
             }
         }
         
@@ -190,6 +193,8 @@ public class JMXManager {
                 logger.info("Detached from VM");
             } catch (IOException e) {
                 logger.warn("Error detaching from VM: {}", e.getMessage());
+            } finally {
+                attachedVM = null;
             }
         }
     }
