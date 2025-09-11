@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.1](https://github.com/sv-oss/dynalog4j/compare/v2.3.0...v2.3.1) (2025-09-11)
+
+
+### Bug Fixes
+
+* enhance reconciliation process to clean up log level overrides when desired levels are empty ([78f501f](https://github.com/sv-oss/dynalog4j/commit/78f501f52248d93b062dd556fe50ce754bc0c41f))
+
 ## [2.3.0](https://github.com/sv-oss/dynalog4j/compare/v2.2.1...v2.3.0) (2025-09-10)
 
 
