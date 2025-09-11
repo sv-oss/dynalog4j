@@ -54,6 +54,7 @@ public class App {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             logger.info("Received shutdown signal, stopping application...");
             app.stop();
+            app.cleanupAll(); // Ensure all resources are properly closed
         }));
         
         // Run with retry logic if configured
@@ -139,12 +140,10 @@ public class App {
             } catch (Exception e) {
                 logger.error("Application failed on attempt {} of {}: {}", attempt, maxAttempts, e.getMessage(), e);
                 
-                // Clean up resources before potentially retrying
-                cleanup();
-                
                 // If this was the last attempt, exit with error
                 if (attempt >= maxAttempts) {
                     logger.error("Maximum retry attempts ({}) exceeded. Exiting.", maxAttempts);
+                    cleanupAll(); // Final cleanup including backend resources
                     System.exit(1);
                     return;
                 }
@@ -230,9 +229,17 @@ public class App {
     }
 
     private void cleanup() {
+        cleanupJmx();
+    }
+    
+    private void cleanupJmx() {
         if (jmxManager != null) {
             jmxManager.disconnect();
         }
+    }
+    
+    void cleanupAll() {
+        cleanupJmx();
         if (backend != null) {
             backend.close();
         }
