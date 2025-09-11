@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.3](https://github.com/sv-oss/dynalog4j/compare/v2.3.2...v2.3.3) (2025-09-11)
+
+
+### Bug Fixes
+
+* ensure proper resource cleanup on shutdown and retry failure ([d024ef7](https://github.com/sv-oss/dynalog4j/commit/d024ef7dc5f85247a10580d4b1da3e21182b66e9))
+
 ## [2.3.2](https://github.com/sv-oss/dynalog4j/compare/v2.3.1...v2.3.2) (2025-09-11)
 
 

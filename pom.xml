@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>au.gov.vic.dgs.digitalplatforms</groupId>
     <artifactId>DynaLog4J</artifactId>
-    <version>2.3.2</version>
+    <version>2.3.3</version>
     <packaging>jar</packaging>
     <name>dynalog4j</name>
     <description>Dynamic Log4j2 Level Management Tool</description>
