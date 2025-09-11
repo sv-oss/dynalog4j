@@ -46,6 +46,9 @@ public class App {
         // Parse configuration from CLI and environment variables
         AppConfiguration config = AppConfiguration.parse(args);
         
+        // Configure log level based on CLI parameter
+        configureLogLevel(config.getLogLevel());
+
         logger.info("Starting dynalog4j with configuration: {}", config);
         
         App app = new App(config);
@@ -78,7 +81,7 @@ public class App {
             throw new IllegalStateException("Application is already running");
         }
 
-        logger.info("Initializing application with reconcile interval: {}", config.getReconcileInterval());
+        logger.info("Starting reconciliation loop with interval: {}", config.getReconcileInterval());
 
         // Initial connection and setup
         connectAndDiscover();
@@ -89,7 +92,7 @@ public class App {
                 performReconciliation();
                 Thread.sleep(config.getReconcileInterval().toMillis());
             } catch (InterruptedException e) {
-                logger.info("Reconciliation loop interrupted");
+                logger.debug("Reconciliation loop interrupted");
                 Thread.currentThread().interrupt();
                 break;
             } catch (Exception e) {
@@ -130,7 +133,7 @@ public class App {
             attempt++;
             
             try {
-                logger.info("Starting application (attempt {} of {})", attempt, maxAttempts);
+                logger.debug("Starting application (attempt {} of {})", attempt, maxAttempts);
                 start();
                 
                 // If we reach here, the application ran successfully and stopped normally
@@ -159,7 +162,7 @@ public class App {
                 try {
                     Thread.sleep(retryDelayMs);
                 } catch (InterruptedException ie) {
-                    logger.info("Retry delay interrupted");
+                    logger.debug("Retry delay interrupted");
                     Thread.currentThread().interrupt();
                     return;
                 }
@@ -176,25 +179,30 @@ public class App {
 
     private void connectAndDiscover() throws Exception {
         // Connect to JMX
+        logger.debug("Connecting to JMX endpoint...");
         jmxManager.connect();
         
         // Discover and select LoggerContext
+        logger.debug("Discovering LoggerContexts...");
         List<LoggerContext> contexts = jmxManager.discoverLoggerContexts();
         if (contexts.isEmpty()) {
             throw new Exception("No Log4j2 LoggerContexts found in target JVM");
         }
         
         targetContext = jmxManager.selectLoggerContext(contexts);
-        logger.info("Target LoggerContext selected: {}", targetContext.getName());
+        logger.info("Connected to LoggerContext: {}", targetContext.getName());
     }
 
     private void performReconciliation() throws Exception {
-        logger.debug("Starting reconciliation cycle...");
+        logger.trace("Starting reconciliation cycle...");
         
         // Fetch desired levels from backend
+        logger.debug("Fetching desired log levels from backend...");
         Map<String, String> desiredLevels = backend.fetchDesiredLevels();
+        logger.trace("Fetched {} desired log levels", desiredLevels.size());
         
         // Get current configuration
+        logger.debug("Retrieving current configuration from LoggerContext...");
         String currentConfig = jmxManager.getConfigurationText(targetContext);
         if (currentConfig == null || currentConfig.trim().isEmpty()) {
             logger.warn("Unable to retrieve current configuration from LoggerContext");
@@ -202,11 +210,12 @@ public class App {
         }
 
         // Reconcile configuration (even if desiredLevels is empty, to clean up previous overrides)
+        logger.debug("Reconciling configuration...");
         String updatedConfig = reconciler.reconcileConfiguration(currentConfig, desiredLevels);
         
         // Check if configuration actually changed
         if (currentConfig.equals(updatedConfig)) {
-            logger.debug("Configuration unchanged, skipping update");
+            logger.info("Configuration unchanged, skipping update");
             return;
         }
 
@@ -219,11 +228,13 @@ public class App {
             }
             logger.debug("DRY RUN: Updated configuration would be:\n{}", updatedConfig);
         } else {
+            logger.debug("Applying updated configuration...");
             jmxManager.setConfigurationText(targetContext, updatedConfig);
             if (desiredLevels.isEmpty()) {
-                logger.info("Configuration successfully updated (cleaned up existing overrides)");
+                logger.info("Configuration updated - no overrides");
             } else {
-                logger.info("Configuration successfully updated with {} overrides", desiredLevels.size());
+                logger.info("Configuration updated with {} log level overrides", desiredLevels.size());
+                logger.debug("Applied overrides: {}", desiredLevels);
             }
         }
     }
@@ -242,6 +253,25 @@ public class App {
         cleanupJmx();
         if (backend != null) {
             backend.close();
+        }
+    }
+
+    /**
+     * Configure the log level for the application based on the provided level string.
+     */
+    private static void configureLogLevel(String logLevel) {
+        try {
+            org.apache.logging.log4j.core.LoggerContext context = 
+                (org.apache.logging.log4j.core.LoggerContext) org.apache.logging.log4j.LogManager.getContext(false);
+            org.apache.logging.log4j.core.config.Configuration config = context.getConfiguration();
+            org.apache.logging.log4j.core.config.LoggerConfig rootLogger = config.getLoggerConfig("");
+
+            org.apache.logging.log4j.Level level = org.apache.logging.log4j.Level.valueOf(logLevel.toUpperCase());
+            rootLogger.setLevel(level);
+            context.updateLoggers();
+        } catch (Exception e) {
+            // Fallback to INFO if level is invalid
+            System.err.println("Warning: Invalid log level '" + logLevel + "', using INFO");
         }
     }
 }

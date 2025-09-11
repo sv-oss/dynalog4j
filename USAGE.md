@@ -38,6 +38,40 @@ export SERVICE_NAME=my-app
 java -jar target/DynaLog4J-1.0.0.jar
 ```
 
+## Log Level Configuration
+
+DynaLog4J supports configurable log levels to control verbosity:
+
+### Quiet Mode (Recommended for Production)
+```bash
+# Only show warnings, errors, and active configuration changes
+java -jar target/DynaLog4J-1.0.0.jar --log-level WARN --backend env
+```
+
+### Normal Mode (Default)
+```bash
+# Show active actions and changes (default level)
+java -jar target/DynaLog4J-1.0.0.jar --log-level INFO --backend env
+```
+
+### Debug Mode
+```bash
+# Show detailed flow information for troubleshooting
+java -jar target/DynaLog4J-1.0.0.jar --log-level DEBUG --backend env
+```
+
+### Trace Mode
+```bash
+# Show very detailed debugging information
+java -jar target/DynaLog4J-1.0.0.jar --log-level TRACE --backend env
+```
+
+**Log Level Behavior:**
+- **WARN/ERROR**: Only errors, warnings, and configuration changes
+- **INFO**: Active actions (startup, configuration updates, connections)
+- **DEBUG**: Detailed flow with periodic heartbeat
+- **TRACE**: Very detailed debugging including reconciliation cycles
+
 ## Retry Configuration
 
 DynaLog4J supports automatic retry on main loop failures for improved resilience:

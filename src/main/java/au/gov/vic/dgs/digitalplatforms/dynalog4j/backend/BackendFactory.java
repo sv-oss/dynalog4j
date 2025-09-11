@@ -16,15 +16,15 @@ public class BackendFactory {
         
         return switch (backendType) {
             case "env" -> {
-                logger.info("Using environment variables backend");
+                logger.debug("Using environment variables backend");
                 yield new EnvBackend();
             }
             case "file" -> {
-                logger.info("Using file backend with path: {}", config.getConfigPath());
+                logger.debug("Using file backend with path: {}", config.getConfigPath());
                 yield new FileBackend(config.getConfigPath());
             }
             case "dynamodb", "dynamo" -> {
-                logger.info("Using DynamoDB backend with table: {}, service: {}", 
+                logger.debug("Using DynamoDB backend with table: {}, service: {}", 
                            config.getDynamoTableName(), config.getServiceName());
                 yield new DynamoDBBackend(config.getDynamoTableName(), config.getServiceName());
             }

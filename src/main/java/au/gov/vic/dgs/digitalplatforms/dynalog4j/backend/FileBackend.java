@@ -43,7 +43,7 @@ public class FileBackend implements Backend {
         Path path = Paths.get(configPath);
         
         if (!Files.exists(path)) {
-            logger.warn("Configuration file {} does not exist, returning empty configuration", configPath);
+            logger.debug("Configuration file {} does not exist, returning empty configuration", configPath);
             return new HashMap<>();
         }
 
@@ -55,7 +55,7 @@ public class FileBackend implements Backend {
             JsonNode loggersNode = root.get("loggers");
             
             if (loggersNode == null || !loggersNode.isObject()) {
-                logger.warn("Configuration file {} does not contain a 'loggers' object", configPath);
+                logger.debug("Configuration file {} does not contain a 'loggers' object", configPath);
                 return new HashMap<>();
             }
 
@@ -75,7 +75,11 @@ public class FileBackend implements Backend {
                 }
             }
             
-            logger.info("Loaded {} log level overrides from file {}", desiredLevels.size(), configPath);
+            if (desiredLevels.isEmpty()) {
+                logger.debug("No valid log level overrides found in file {}", configPath);
+            } else {
+                logger.info("Loaded {} log level overrides from file {}", desiredLevels.size(), configPath);
+            }
             return desiredLevels;
             
         } catch (IOException e) {

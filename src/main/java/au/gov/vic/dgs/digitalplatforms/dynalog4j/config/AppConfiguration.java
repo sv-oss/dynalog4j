@@ -63,9 +63,9 @@ public class AppConfiguration {
             description = "Run in dry-run mode (no actual configuration changes)")
     private boolean dryRun = Boolean.parseBoolean(getEnvOrDefault("DRY_RUN", "false"));
 
-    @Option(names = {"-v", "--verbose"}, 
-            description = "Enable verbose logging")
-    private boolean verbose = Boolean.parseBoolean(getEnvOrDefault("VERBOSE", "false"));
+    @Option(names = {"-l", "--log-level"}, 
+            description = "Log level: TRACE, DEBUG, INFO, WARN, ERROR (default: ${DEFAULT-VALUE})")
+    private String logLevel = getEnvOrDefault("LOG_LEVEL", "INFO");
 
     // Retry Configuration
     @Option(names = {"--max-attempts"}, 
@@ -160,8 +160,8 @@ public class AppConfiguration {
         return dryRun;
     }
 
-    public boolean isVerbose() {
-        return verbose;
+    public String getLogLevel() {
+        return logLevel != null ? logLevel.toUpperCase() : "INFO";
     }
 
     public int getMaxAttempts() {
@@ -220,8 +220,8 @@ public class AppConfiguration {
         this.dryRun = dryRun;
     }
 
-    public void setVerbose(boolean verbose) {
-        this.verbose = verbose;
+    public void setLogLevel(String logLevel) {
+        this.logLevel = logLevel;
     }
 
     public void setMaxAttempts(Integer maxAttempts) {
@@ -266,7 +266,7 @@ public class AppConfiguration {
                 ", targetLoggerContext='" + targetLoggerContext + '\'' +
                 ", reconcileIntervalSeconds=" + reconcileIntervalSeconds +
                 ", dryRun=" + dryRun +
-                ", verbose=" + verbose +
+                ", logLevel='" + logLevel + '\'' +
                 ", maxAttempts=" + maxAttempts +
                 ", retryIntervalSeconds=" + retryIntervalSeconds +
                 '}';

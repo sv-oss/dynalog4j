@@ -118,7 +118,7 @@ public class JMXManager {
             
             if (jmxAddress == null) {
                 // No JMX agent loaded, start the local management agent
-                logger.info("JMX agent not loaded, starting local management agent");
+                logger.debug("JMX agent not loaded, starting local management agent");
                 
                 try {
                     attachedVM.startLocalManagementAgent();
@@ -128,7 +128,7 @@ public class JMXManager {
                     jmxAddress = agentProperties.getProperty("com.sun.management.jmxremote.localConnectorAddress");
                     
                     if (jmxAddress != null) {
-                        logger.info("Successfully started local management agent");
+                        logger.debug("Successfully started local management agent");
                     }
                 } catch (Exception e) {
                     logger.warn("Failed to start local management agent: {}", e.getMessage());
@@ -140,7 +140,7 @@ public class JMXManager {
                 throw new Exception("Failed to obtain JMX connector address from process " + pid);
             }
             
-            logger.info("Found JMX connector address: {}", jmxAddress);
+            logger.debug("Found JMX connector address: {}", jmxAddress);
             
             // Connect to the JMX endpoint using the connector address
             connectViaUrl(jmxAddress);
@@ -159,11 +159,11 @@ public class JMXManager {
      */
     private void connectViaUrl(String url) throws Exception {
         try {
-            logger.info("Connecting to JMX endpoint: {}", url);
+            logger.debug("Connecting to JMX endpoint: {}", url);
             JMXServiceURL serviceURL = new JMXServiceURL(url);
             connector = JMXConnectorFactory.connect(serviceURL, null);
             connection = connector.getMBeanServerConnection();
-            logger.info("Successfully connected to JMX endpoint");
+            logger.debug("Successfully connected to JMX endpoint");
         } catch (MalformedURLException e) {
             throw new Exception("Invalid JMX URL: " + url, e);
         } catch (IOException e) {
@@ -178,7 +178,7 @@ public class JMXManager {
         if (connector != null) {
             try {
                 connector.close();
-                logger.info("Disconnected from JMX endpoint");
+                logger.debug("Disconnected from JMX endpoint");
             } catch (IOException e) {
                 logger.warn("Error closing JMX connection: {}", e.getMessage());
             } finally {
@@ -190,7 +190,7 @@ public class JMXManager {
         if (attachedVM != null) {
             try {
                 attachedVM.detach();
-                logger.info("Detached from VM");
+                logger.debug("Detached from VM");
             } catch (IOException e) {
                 logger.warn("Error detaching from VM: {}", e.getMessage());
             } finally {
@@ -212,10 +212,10 @@ public class JMXManager {
             ObjectName pattern = new ObjectName("org.apache.logging.log4j2:*");
             Set<ObjectInstance> mbeans = connection.queryMBeans(pattern, null);
             
-            logger.info("Found {} Log4j2 MBeans total:", mbeans.size());
+            logger.debug("Found {} Log4j2 MBeans total:", mbeans.size());
             for (ObjectInstance mbean : mbeans) {
                 ObjectName objectName = mbean.getObjectName();
-                logger.info("  - {}", objectName);
+                logger.debug("  - {}", objectName);
             }
             
             // Look for main LoggerContext MBeans with config operations
@@ -247,16 +247,16 @@ public class JMXManager {
                         String opName = op.getName();
                         if ("getConfigText".equals(opName)) {
                             hasGetConfigText = true;
-                            logger.info("Found getConfigText operation on {}", objectName);
+                            logger.debug("Found getConfigText operation on {}", objectName);
                         } else if ("setConfigText".equals(opName)) {
                             hasSetConfigText = true;
-                            logger.info("Found setConfigText operation on {}", objectName);
+                            logger.debug("Found setConfigText operation on {}", objectName);
                         }
                     }
                     
                     if (hasGetConfigText && hasSetConfigText) {
                         contexts.add(new LoggerContext(objectName, type));
-                        logger.info("Added LoggerContext: {} (type: {})", objectName, type);
+                        logger.debug("Added LoggerContext: {} (type: {})", objectName, type);
                     }
                 } catch (Exception e) {
                     logger.debug("Could not inspect MBean {}: {}", objectName, e.getMessage());
@@ -274,13 +274,13 @@ public class JMXManager {
                 }
             }
             
-            logger.info("Discovered {} LoggerContext(s):", contexts.size());
+            logger.debug("Discovered {} LoggerContext(s):", contexts.size());
             for (int i = 0; i < contexts.size(); i++) {
                 LoggerContext ctx = contexts.get(i);
                 String displayName = (ctx.getName() == null || ctx.getName().isEmpty()) 
                     ? "<default-context>" 
                     : ctx.getName();
-                logger.info("  [{}] {} (ObjectName: {})", i + 1, displayName, ctx.getObjectName());
+                logger.debug("  [{}] {} (ObjectName: {})", i + 1, displayName, ctx.getObjectName());
             }
             return contexts;
             
@@ -334,7 +334,7 @@ public class JMXManager {
             ? "<default-context>" 
             : selected.getName();
 
-        logger.info("Auto-selected LoggerContext: {} (ObjectName: {})", 
+        logger.debug("Auto-selected LoggerContext: {} (ObjectName: {})", 
                    selectedDisplayName, selected.getObjectName());
         return selected;
     }
@@ -361,11 +361,11 @@ public class JMXManager {
         try {
             // First, let's try to list available operations for debugging
             javax.management.MBeanInfo mbeanInfo = connection.getMBeanInfo(context.getObjectName());
-            logger.info("Available operations for {}: ", context.getObjectName());
+            logger.debug("Available operations for {}: ", context.getObjectName());
             for (javax.management.MBeanOperationInfo op : mbeanInfo.getOperations()) {
-                logger.info("  - {} returns {} ({})", op.getName(), op.getReturnType(), op.getDescription());
+                logger.debug("  - {} returns {} ({})", op.getName(), op.getReturnType(), op.getDescription());
                 for (javax.management.MBeanParameterInfo param : op.getSignature()) {
-                    logger.info("    param: {} {}", param.getType(), param.getName());
+                    logger.debug("    param: {} {}", param.getType(), param.getName());
                 }
             }
             
@@ -382,7 +382,7 @@ public class JMXManager {
                     );
                     
                     if (result != null) {
-                        logger.info("Successfully retrieved configuration using method: {}", methodName);
+                        logger.debug("Successfully retrieved configuration using method: {}", methodName);
                         return result.toString();
                     }
                 } catch (javax.management.ReflectionException e) {
@@ -396,7 +396,7 @@ public class JMXManager {
                         );
                         
                         if (result != null) {
-                            logger.info("Successfully retrieved configuration using method: {} (no params)", methodName);
+                            logger.debug("Successfully retrieved configuration using method: {} (no params)", methodName);
                             return result.toString();
                         }
                     } catch (Exception ignored) {
@@ -447,7 +447,7 @@ public class JMXManager {
                 new javax.management.Attribute("ConfigLocationUri", configUri)
             );
             
-            logger.info("Successfully updated configuration location for LoggerContext: {} to {}", 
+            logger.debug("Successfully updated configuration location for LoggerContext: {} to {}", 
                        context.getName(), configUri);
         } catch (Exception e) {
             throw new Exception("Failed to set configuration location for LoggerContext: " + context.getName(), e);
@@ -469,10 +469,10 @@ public class JMXManager {
             List<VirtualMachineDescriptor> vms = VirtualMachine.list();
             String currentPid = String.valueOf(ProcessHandle.current().pid());
             
-            logger.info("Discovering attachable Java processes...");
-            logger.info("Current process PID: {} (will be excluded)", currentPid);
+            logger.debug("Discovering attachable Java processes...");
+            logger.debug("Current process PID: {} (will be excluded)", currentPid);
             if (commandFilter != null && !commandFilter.trim().isEmpty()) {
-                logger.info("Using command filter: {}", commandFilter);
+                logger.debug("Using command filter: {}", commandFilter);
             }
             
             for (VirtualMachineDescriptor vm : vms) {
@@ -514,7 +514,7 @@ public class JMXManager {
                     }
                     
                     attachablePids.add(pid);
-                    logger.info("Found attachable Java process - PID: {}, Java: {}, Command: {}", 
+                    logger.debug("Found attachable Java process - PID: {}, Java: {}, Command: {}", 
                                pid, javaVersion, mainClass.length() > 80 ? mainClass.substring(0, 80) + "..." : mainClass);
                     
                 } catch (Exception e) {
@@ -531,7 +531,7 @@ public class JMXManager {
                 String filterMsg = (commandFilter != null && !commandFilter.trim().isEmpty()) 
                     ? " matching filter '" + commandFilter + "'" 
                     : "";
-                logger.info("Found {} attachable Java process(es){}", attachablePids.size(), filterMsg);
+                logger.debug("Found {} attachable Java process(es){}", attachablePids.size(), filterMsg);
             }
             
         } catch (Exception e) {

@@ -29,7 +29,7 @@ class AppConfigurationTest {
         environmentVariables.set("TARGET_LOGGER_CONTEXT", null);
         environmentVariables.set("RECONCILE_INTERVAL_SECONDS", null);
         environmentVariables.set("DRY_RUN", null);
-        environmentVariables.set("VERBOSE", null);
+        environmentVariables.set("LOG_LEVEL", null);
     }
 
     @Test
@@ -46,7 +46,7 @@ class AppConfigurationTest {
         assertThat(config.getTargetLoggerContext()).isNull();
         assertThat(config.getReconcileInterval()).isEqualTo(Duration.ofSeconds(30));
         assertThat(config.isDryRun()).isFalse();
-        assertThat(config.isVerbose()).isFalse();
+        assertThat(config.getLogLevel()).isEqualTo("INFO");
     }
 
     @Test
@@ -60,7 +60,7 @@ class AppConfigurationTest {
         environmentVariables.set("TARGET_LOGGER_CONTEXT", "MyContext");
         environmentVariables.set("RECONCILE_INTERVAL_SECONDS", "60");
         environmentVariables.set("DRY_RUN", "true");
-        environmentVariables.set("VERBOSE", "true");
+        environmentVariables.set("LOG_LEVEL", "DEBUG");
 
         AppConfiguration config = AppConfiguration.parse(new String[]{});
         
@@ -74,7 +74,7 @@ class AppConfigurationTest {
         assertThat(config.getTargetLoggerContext()).isEqualTo("MyContext");
         assertThat(config.getReconcileInterval()).isEqualTo(Duration.ofSeconds(60));
         assertThat(config.isDryRun()).isTrue();
-        assertThat(config.isVerbose()).isTrue();
+        assertThat(config.getLogLevel()).isEqualTo("DEBUG");
     }
 
     @Test
@@ -88,14 +88,14 @@ class AppConfigurationTest {
             "--jmx-host", "cli-host",
             "--interval", "45",
             "--dry-run",
-            "--verbose"
+            "--log-level", "TRACE"
         });
         
         assertThat(config.getBackend()).isEqualTo("dynamo");
         assertThat(config.getJmxHost()).isEqualTo("cli-host");
         assertThat(config.getReconcileInterval()).isEqualTo(Duration.ofSeconds(45));
         assertThat(config.isDryRun()).isTrue();
-        assertThat(config.isVerbose()).isTrue();
+        assertThat(config.getLogLevel()).isEqualTo("TRACE");
     }
 
     @Test
@@ -103,12 +103,12 @@ class AppConfigurationTest {
         AppConfiguration config = AppConfiguration.parse(new String[]{
             "-b", "file",
             "-i", "15",
-            "-v"
+            "-l", "DEBUG"
         });
         
         assertThat(config.getBackend()).isEqualTo("file");
         assertThat(config.getReconcileInterval()).isEqualTo(Duration.ofSeconds(15));
-        assertThat(config.isVerbose()).isTrue();
+        assertThat(config.getLogLevel()).isEqualTo("DEBUG");
     }
 
     @Test
@@ -162,7 +162,7 @@ class AppConfigurationTest {
         config.setTargetLoggerContext("TestContext");
         config.setReconcileIntervalSeconds(77L);
         config.setDryRun(true);
-        config.setVerbose(true);
+        config.setLogLevel("WARN");
         
         assertThat(config.getBackend()).isEqualTo("dynamo");
         assertThat(config.getDynamoTableName()).isEqualTo("test-table");
@@ -174,7 +174,7 @@ class AppConfigurationTest {
         assertThat(config.getTargetLoggerContext()).isEqualTo("TestContext");
         assertThat(config.getReconcileInterval()).isEqualTo(Duration.ofSeconds(77));
         assertThat(config.isDryRun()).isTrue();
-        assertThat(config.isVerbose()).isTrue();
+        assertThat(config.getLogLevel()).isEqualTo("WARN");
     }
 
     @Test

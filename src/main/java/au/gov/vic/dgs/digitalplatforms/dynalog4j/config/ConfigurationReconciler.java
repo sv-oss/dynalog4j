@@ -80,7 +80,7 @@ public class ConfigurationReconciler {
 
             // Convert back to XML string
             String updatedXml = documentToString(document);
-            logger.info("Successfully reconciled configuration with {} log level overrides", desiredLevels.size());
+
             return updatedXml;
 
         } catch (Exception e) {
@@ -127,7 +127,7 @@ public class ConfigurationReconciler {
             // If this logger was added by our overrides and is no longer desired, mark for removal
             if (isDynamic && !desiredLevels.containsKey(loggerName)) {
                 toRemove.add(loggerElement);
-                logger.info("Marked dynamic logger '{}' for removal (no longer in desired state)", loggerName);
+                logger.debug("Marked dynamic logger '{}' for removal (no longer in desired state)", loggerName);
             }
         }
         
@@ -145,7 +145,7 @@ public class ConfigurationReconciler {
             }
             
             loggersElement.removeChild(loggerToRemove);
-            logger.info("Removed dynamic logger '{}'", loggerName);
+            logger.debug("Removed dynamic logger '{}'", loggerName);
         }
         
         if (!toRemove.isEmpty()) {
@@ -290,17 +290,43 @@ public class ConfigurationReconciler {
     }
 
     private String documentToString(Document document) throws TransformerException {
+        // First, normalize the document to remove excessive whitespace
+        normalizeWhitespace(document.getDocumentElement());
+
         Transformer transformer = transformerFactory.newTransformer();
         transformer.setOutputProperty(OutputKeys.INDENT, "yes");
         transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
         transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
-        
+        transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "no");
+
         try (StringWriter writer = new StringWriter()) {
             transformer.transform(new DOMSource(document), new StreamResult(writer));
             return writer.toString();
         } catch (IOException e) {
             // StringWriter close() doesn't actually throw IOException, but just in case
             throw new TransformerException("Error closing StringWriter", e);
+        }
+    }
+
+    /**
+     * Normalize whitespace in the XML document by removing excessive empty text nodes.
+     */
+    private void normalizeWhitespace(Element element) {
+        NodeList children = element.getChildNodes();
+        for (int i = children.getLength() - 1; i >= 0; i--) {
+            Node child = children.item(i);
+            if (child.getNodeType() == Node.TEXT_NODE) {
+                String text = child.getTextContent();
+                if (text.trim().isEmpty()) {
+                    // Remove completely empty text nodes
+                    element.removeChild(child);
+                } else if (text.matches("\\s+")) {
+                    // Replace whitespace-only nodes with a single space or newline
+                    child.setTextContent(" ");
+                }
+            } else if (child.getNodeType() == Node.ELEMENT_NODE) {
+                normalizeWhitespace((Element) child);
+            }
         }
     }
 }

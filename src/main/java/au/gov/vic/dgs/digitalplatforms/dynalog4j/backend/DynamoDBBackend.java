@@ -77,7 +77,7 @@ public class DynamoDBBackend implements Backend {
             QueryResponse response = dynamoDbClient.query(request);
             
             if (!response.hasItems() || response.items().isEmpty()) {
-                logger.info("No configuration found in DynamoDB for service: {}", serviceName);
+                logger.debug("No configuration found in DynamoDB for service: {}", serviceName);
                 return new HashMap<>();
             }
 
@@ -104,8 +104,12 @@ public class DynamoDBBackend implements Backend {
                 }
             }
             
-            logger.info("Loaded {} log level overrides from DynamoDB for service {}", 
-                       desiredLevels.size(), serviceName);
+            if (desiredLevels.isEmpty()) {
+                logger.debug("No valid log level overrides found in DynamoDB for service {}", serviceName);
+            } else {
+                logger.info("Loaded {} log level overrides from DynamoDB for service {}", 
+                           desiredLevels.size(), serviceName);
+            }
             return desiredLevels;
             
         } catch (Exception e) {
@@ -134,7 +138,7 @@ public class DynamoDBBackend implements Backend {
         if (awsClient != null) {
             try {
                 awsClient.close();
-                logger.info("Closed DynamoDB client");
+                logger.debug("Closed DynamoDB client");
             } catch (Exception e) {
                 logger.warn("Error closing DynamoDB client: {}", e.getMessage());
             }

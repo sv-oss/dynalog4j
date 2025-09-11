@@ -34,7 +34,11 @@ public class EnvBackend implements Backend {
             }
         }
         
-        logger.info("Loaded {} log level overrides from environment variables", desiredLevels.size());
+        if (desiredLevels.isEmpty()) {
+            logger.debug("No log level overrides found in environment variables");
+        } else {
+            logger.info("Loaded {} log level overrides from environment variables", desiredLevels.size());
+        }
         return desiredLevels;
     }
     
