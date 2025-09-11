@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.4](https://github.com/sv-oss/dynalog4j/compare/v2.3.3...v2.3.4) (2025-09-11)
+
+
+### Bug Fixes
+
+* adjust log levels to reduce verbosity ([e44cb14](https://github.com/sv-oss/dynalog4j/commit/e44cb14c2020a1f18c1c26c34542316301cd4897))
+
 ## [2.3.3](https://github.com/sv-oss/dynalog4j/compare/v2.3.2...v2.3.3) (2025-09-11)
 
 
