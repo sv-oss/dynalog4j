@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.6](https://github.com/sv-oss/dynalog4j/compare/v2.3.5...v2.3.6) (2026-05-17)
+
+
+### Bug Fixes
+
+* **deps:** bump the dependencies group with 26 updates ([#30](https://github.com/sv-oss/dynalog4j/issues/30)) ([1dd9304](https://github.com/sv-oss/dynalog4j/commit/1dd93044fba1c744f1c8b8385bc1d51fb61a9bbb))
+
 ## [2.3.5](https://github.com/sv-oss/dynalog4j/compare/v2.3.4...v2.3.5) (2026-05-17)
 
 
