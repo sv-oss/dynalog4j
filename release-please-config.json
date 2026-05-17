@@ -2,7 +2,8 @@
   "packages": {
     ".": {
       "release-type": "maven",
-      "skip-snapshot": true
+      "skip-snapshot": true,
+      "bump-patch": true
     }
   }
 }
